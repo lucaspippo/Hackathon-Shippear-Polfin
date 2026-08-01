@@ -40,12 +40,13 @@ function Rico({ texto }: { texto: string }) {
 
 export function Angela({
   rol, auditoria, pendientes, evaluando, resultado, correrAgente, irA,
-  vigilarAhora, vigilando,
+  vigilarAhora, vigilando, colapsado = false, onToggle,
 }: {
   rol: Rol; auditoria: Auditoria[]; pendientes: number;
   evaluando: boolean; resultado: ResultadoAgente;
   correrAgente: () => void; irA: (v: Vista, foco?: number) => void;
   vigilarAhora: () => void; vigilando: boolean;
+  colapsado?: boolean; onToggle?: () => void;
 }) {
   const actividad = humanizarAuditoria(auditoria, 3);
   const esperando = pendientes > 0;
@@ -96,11 +97,42 @@ export function Angela({
     }
   }
 
+  if (colapsado) {
+    return (
+      <div className="flex w-7 shrink-0 flex-col items-center border-l border-linea bg-panel py-4">
+        <button
+          onClick={onToggle}
+          aria-label="Abrir el chat de Ángela"
+          title="Abrir el chat de Ángela"
+          className="flex size-6 items-center justify-center rounded-full border border-linea bg-carta text-tenue transition-colors hover:text-tinta"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden>
+            <path d="M9 5 16 12l-7 7" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <aside className="flex w-[340px] shrink-0 flex-col overflow-hidden border-l border-linea bg-panel">
       {/* ----------------------------------------------------- cabecera (fija) */}
       <div className="shrink-0 px-5 pb-3 pt-5">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-tenue">Tu guía</div>
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-tenue">Tu guía</div>
+          {onToggle && (
+            <button
+              onClick={onToggle}
+              aria-label="Colapsar el chat de Ángela"
+              title="Colapsar el chat de Ángela"
+              className="flex size-6 items-center justify-center rounded-full border border-linea text-tenue transition-colors hover:text-tinta"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden>
+                <path d="M9 5 16 12l-7 7" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+        </div>
         <div className="mt-3 flex items-center gap-3">
           <span className="relative flex size-11 items-center justify-center rounded-full bg-brand/15">
             <span className="size-4.5 rounded-full bg-brand" />

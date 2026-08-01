@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import { apiPost, type Auditoria, type Solicitud } from "@/lib/api";
 import { ROLES, rolPorId, type RolId, type Vista } from "@/lib/roles";
-import { useApi, useEsMobile } from "@/components/ui";
+import { useApi, useEsMobile, usePersistente } from "@/components/ui";
 import { Sidebar } from "@/components/sidebar";
 import { Feed } from "@/components/feed";
 import { Angela } from "@/components/angela";
@@ -37,6 +37,10 @@ export function Shell() {
   const [menuAbierto, setMenuAbierto] = useState(false); // drawer mobile
   const [doc, setDoc] = useState<DocRef | null>(null);    // documento abierto
   const esMobile = useEsMobile();
+
+  // paneles colapsables (navbar a rail de íconos, chat a franja oculta)
+  const [sidebarColapsado, setSidebarColapsado] = usePersistente("polfin.sidebarColapsado", false);
+  const [angelaColapsado, setAngelaColapsado] = usePersistente("polfin.angelaColapsado", false);
 
   const rol = rolPorId(rolId);
   const focal = foco ?? rol.entidadId;
@@ -177,6 +181,8 @@ export function Shell() {
           rol={rol} vista={vista} irA={irA} ocultarCerebro={ocultarCerebro}
           pendientes={pendientesMias.length || pendientes.length}
           esperandoOk={pendientesMias.length > 0 || pendientes.length > 0}
+          colapsado={sidebarColapsado}
+          onToggle={() => setSidebarColapsado(!sidebarColapsado)}
         />
       </div>
 
@@ -271,6 +277,8 @@ export function Shell() {
           evaluando={evaluando} resultado={resultado}
           correrAgente={correrAgente} irA={irA}
           vigilarAhora={vigilarAhora} vigilando={vigilando}
+          colapsado={angelaColapsado}
+          onToggle={() => setAngelaColapsado(!angelaColapsado)}
         />
       </div>
 
