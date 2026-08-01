@@ -63,7 +63,7 @@ export type Instrumento = {
   id: number; deudor_id: number; acreedor_id: number; monto: number;
   tasa_tna: number; plazo_dias: number; fecha_vencimiento: string;
   estado: "activo" | "pagado" | "vencido";
-  contrato_address: string; tx_hash: string; red: string;
+  contrato_address: string; tx_hash: string; red: string; token_id: number | null;
   aceptado: number; aceptado_at: string | null; created_at: string;
   deudor_nombre: string; deudor_tipo?: string; deudor_ciudad?: string;
   acreedor_nombre: string; acreedor_rubro?: string; acreedor_ciudad?: string;
