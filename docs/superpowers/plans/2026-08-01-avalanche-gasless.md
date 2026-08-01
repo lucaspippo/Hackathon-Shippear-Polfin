@@ -582,13 +582,15 @@ git commit -m "refactor(backend): las 3 llamadas on-chain van patrocinadas vía 
 - Modify: `contracts/scripts/deploy.js`
 
 **Interfaces:**
-- Consumes: mismo paquete de 0xgasless confirmado en la Tarea 6, Step 1 (acá instalado en `contracts/`, paquete npm distinto pero mismo nombre — `contracts/` y `backend/` son paquetes separados sin workspaces, así que la dependencia se declara en los dos `package.json`).
-- Produces: `obtenerDireccionSmartAccount({signer, chainId, apiKey}): Promise<string>` — lo consume `deploy.js` en este mismo task.
+- Consumes: mismo paquete de 0xgasless que la Tarea 6 confirmó — `@0xgasless/smart-account` (más sus dos dependencias reales no declaradas correctamente por el registro de npm: `viem` y `merkletreejs` — ver `backend/src/chain/gasless.js`, cabecera, para el detalle). `contracts/` y `backend/` son paquetes separados sin workspaces, así que las tres dependencias se declaran también acá.
+- Produces: `obtenerDireccionSmartAccount({signer, chainId, bundlerUrl, paymasterUrl, rpcUrl}): Promise<string>` — lo consume `deploy.js` en este mismo task.
 
-- [ ] **Step 1: Instalar el mismo paquete de 0xgasless en `contracts/`**
+**Nota (post Tarea 6):** la Tarea 6 investigó el SDK real y encontró que la config NO es `apiKey` suelta — son dos URLs completas (`bundlerUrl`/`paymasterUrl`, con la key ya embebida en el path, entregadas por el dashboard de 0xgasless al crear un paymaster para una chain + wallet address). Este task usa esa misma forma de config, ya confirmada — ver `backend/src/chain/gasless.js` como la fuente de verdad de la interfaz real del SDK.
+
+- [ ] **Step 1: Instalar el mismo paquete de 0xgasless (+ sus 2 dependencias reales) en `contracts/`**
 
 ```bash
-npm --prefix contracts install <mismo-paquete-confirmado-en-tarea-6>
+npm --prefix contracts install @0xgasless/smart-account viem merkletreejs
 ```
 
 - [ ] **Step 2: Crear `contracts/scripts/lib/smartAccount.js`**
@@ -598,12 +600,11 @@ npm --prefix contracts install <mismo-paquete-confirmado-en-tarea-6>
 //
 // Calcula la dirección de la Smart Account de 0xgasless para el operador que
 // está deployando, para poder transferirle el ownership de los tres
-// contratos justo después del deploy. Misma salvedad que
-// backend/src/chain/gasless.js (Tarea 6): AJUSTAR nombres de import/método
-// contra lo que confirmaste ahí — es el mismo paquete, mismo SDK.
-async function obtenerDireccionSmartAccount({ signer, chainId, apiKey }) {
-  const { createSmartAccountClient } = await import('<mismo-paquete-confirmado-en-tarea-6>');
-  const cuenta = await createSmartAccountClient({ signer, chainId, apiKey });
+// contratos justo después del deploy. Misma config confirmada en la Tarea 6
+// (backend/src/chain/gasless.js): bundlerUrl/paymasterUrl, no apiKey suelta.
+async function obtenerDireccionSmartAccount({ signer, chainId, bundlerUrl, paymasterUrl, rpcUrl }) {
+  const { createSmartAccountClient } = await import('@0xgasless/smart-account');
+  const cuenta = await createSmartAccountClient({ signer, chainId, bundlerUrl, paymasterUrl, rpcUrl });
   return cuenta.getAddress();
 }
 
@@ -620,20 +621,23 @@ const { obtenerDireccionSmartAccount } = require('./lib/smartAccount');
 Reemplazar el bloque que arma `direcciones` (el que quedó de la Tarea 4) por:
 
 ```js
+  const RPC_ENV = { fuji: 'POLFIN_FUJI_RPC_URL', avalanche: 'POLFIN_AVALANCHE_RPC_URL' };
   const CHAIN_ID = { fuji: 43113, avalanche: 43114 };
   const sufijo = hre.network.name.toUpperCase();
-  const apiKey = process.env[`POLFIN_0XGASLESS_API_KEY_${sufijo}`];
+  const bundlerUrl = process.env[`POLFIN_0XGASLESS_BUNDLER_URL_${sufijo}`];
+  const paymasterUrl = process.env[`POLFIN_0XGASLESS_PAYMASTER_URL_${sufijo}`];
   let smartAccountAddress = null;
-  if (apiKey && CHAIN_ID[hre.network.name]) {
+  if (bundlerUrl && paymasterUrl && CHAIN_ID[hre.network.name]) {
     smartAccountAddress = await obtenerDireccionSmartAccount({
-      signer: operador, chainId: CHAIN_ID[hre.network.name], apiKey,
+      signer: operador, chainId: CHAIN_ID[hre.network.name], bundlerUrl, paymasterUrl,
+      rpcUrl: process.env[RPC_ENV[hre.network.name]],
     });
     console.log('Transfiriendo ownership a la Smart Account:', smartAccountAddress);
     await (await scoreRegistry.transferOwnership(smartAccountAddress)).wait();
     await (await ePagare.transferOwnership(smartAccountAddress)).wait();
     await (await mockUsdc.transferOwnership(smartAccountAddress)).wait();
   } else {
-    console.log(`\nOJO: no se transfirió el ownership a ninguna Smart Account (falta POLFIN_0XGASLESS_API_KEY_${sufijo} o la red no es fuji/avalanche). Los contratos quedan owned por la EOA operadora.`);
+    console.log(`\nOJO: no se transfirió el ownership a ninguna Smart Account (faltan POLFIN_0XGASLESS_BUNDLER_URL_${sufijo}/POLFIN_0XGASLESS_PAYMASTER_URL_${sufijo}, o la red no es fuji/avalanche). Los contratos quedan owned por la EOA operadora.`);
   }
 
   const direcciones = {
@@ -647,10 +651,10 @@ Reemplazar el bloque que arma `direcciones` (el que quedó de la Tarea 4) por:
   };
 ```
 
-- [ ] **Step 4: Smoke test contra la red local de Hardhat (sin API key — debe saltear la transferencia)**
+- [ ] **Step 4: Smoke test contra la red local de Hardhat (sin bundler/paymaster URL — debe saltear la transferencia)**
 
 Run: `npx hardhat run scripts/deploy.js --network hardhat` (desde `contracts/`)
-Expected: imprime el mensaje "OJO: no se transfirió..." (no hay `POLFIN_0XGASLESS_API_KEY_HARDHAT`), y `contracts/deployments/hardhat.json` tiene `"smartAccount": null`.
+Expected: imprime el mensaje "OJO: no se transfirió..." (no hay `POLFIN_0XGASLESS_BUNDLER_URL_HARDHAT`/`POLFIN_0XGASLESS_PAYMASTER_URL_HARDHAT`), y `contracts/deployments/hardhat.json` tiene `"smartAccount": null`.
 
 - [ ] **Step 5: Commit**
 
@@ -1346,8 +1350,10 @@ Reemplazar por:
 backend base URL), `POLFIN_CHAIN_MODE` (`mock` default | `fuji` | `avalanche`),
 `POLFIN_FUJI_RPC_URL` / `POLFIN_AVALANCHE_RPC_URL`,
 `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` / `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE`,
-`POLFIN_0XGASLESS_API_KEY_FUJI` / `POLFIN_0XGASLESS_API_KEY_AVALANCHE` (gas
-patrocinado vía la Smart Account de 0xgasless — ver
+`POLFIN_0XGASLESS_BUNDLER_URL_FUJI` / `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI` /
+`POLFIN_0XGASLESS_BUNDLER_URL_AVALANCHE` /
+`POLFIN_0XGASLESS_PAYMASTER_URL_AVALANCHE` (gas patrocinado vía la Smart
+Account de 0xgasless — ver
 `docs/superpowers/specs/2026-08-01-avalanche-gasless-design.md`). Las
 direcciones de los 3 contratos ya no van en el `.env`: se leen de
 `contracts/deployments/{fuji|avalanche}.json`, generado por
@@ -1384,9 +1390,9 @@ git commit -m "docs: reflejar el on-chain real (Fuji+mainnet, gas patrocinado po
 
 **No es código — es la primera puesta en marcha real, con la red gratuita.**
 
-- [ ] **Step 1:** Crear el segundo proyecto en dashboard.0xgasless.com para Fuji testnet (chainId 43113), copiar su API key a `POLFIN_0XGASLESS_API_KEY_FUJI` en `backend/.env` y `contracts/.env`.
-- [ ] **Step 2:** Generar una wallet operadora descartable para Fuji (ej. `node --input-type=module -e "import {Wallet} from 'ethers'; const w = Wallet.createRandom(); console.log('address:', w.address); console.log('private key (guardala vos, no la pego yo en ningún lado):', w.privateKey);"`), fondearla con AVAX de testnet desde el faucet de Avalanche, y poner su private key en `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` en ambos `.env`.
-- [ ] **Step 3:** Cargar el gas tank del paymaster del proyecto Fuji en el dashboard de 0xgasless.
+- [ ] **Step 1:** Generar una wallet operadora descartable para Fuji (ej. `node --input-type=module -e "import {Wallet} from 'ethers'; const w = Wallet.createRandom(); console.log('address:', w.address); console.log('private key (guardala vos, no la pego yo en ningún lado):', w.privateKey);"`), fondearla con AVAX de testnet desde el faucet de Avalanche, y poner su private key en `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` en ambos `.env`.
+- [ ] **Step 2:** En dashboard.0xgasless.com crear un paymaster nuevo eligiendo la chain **Avalanche Fuji** y pegando la wallet address generada en el Step 1. Copiar las dos URLs que entrega (bundler y paymaster) a `POLFIN_0XGASLESS_BUNDLER_URL_FUJI` / `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI` en `backend/.env` y `contracts/.env`.
+- [ ] **Step 3:** Cargar el gas tank de ese paymaster en el dashboard de 0xgasless.
 - [ ] **Step 4:** `npm run contracts:deploy:fuji` — confirmar que imprime la Smart Account y transfiere el ownership de los 3 contratos (no el mensaje "OJO: no se transfirió...").
 - [ ] **Step 5:** Con `POLFIN_CHAIN_MODE=fuji` en `backend/.env`, levantar el backend (`npm run dev:api`) y disparar un crédito de prueba de punta a punta (UI o `POST /api/agente/evaluar-credito`).
 - [ ] **Step 6:** Confirmar en `testnet.snowtrace.io` que la transacción de `generarInstrumento` es real, que el NFT se minteó, y — clave — que la wallet operadora **no gastó AVAX propio** (el gas lo pagó el paymaster).
@@ -1398,8 +1404,8 @@ git commit -m "docs: reflejar el on-chain real (Fuji+mainnet, gas patrocinado po
 
 **Requiere OK explícito del usuario antes del Step 3 (gasta AVAX real).**
 
-- [ ] **Step 1:** Copiar la API key de mainnet ya creada en el dashboard a `POLFIN_0XGASLESS_API_KEY_AVALANCHE` en ambos `.env`.
-- [ ] **Step 2:** Poner la private key de la wallet operadora real (fondeada por el usuario con AVAX real) en `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE` en ambos `.env`, y cargar el gas tank del paymaster de ese proyecto en el dashboard.
+- [ ] **Step 1:** Poner la private key de la wallet operadora real (fondeada por el usuario con AVAX real) en `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE` en ambos `.env`.
+- [ ] **Step 2:** En dashboard.0xgasless.com crear (o confirmar que ya existe) un paymaster para la chain **Avalanche** con la wallet address del operador real del Step 1. Copiar las dos URLs (bundler y paymaster) a `POLFIN_0XGASLESS_BUNDLER_URL_AVALANCHE` / `POLFIN_0XGASLESS_PAYMASTER_URL_AVALANCHE` en ambos `.env`, y cargar el gas tank de ese paymaster en el dashboard.
 - [ ] **Step 3 (checkpoint — pedir confirmación antes de correr esto):** `npm run contracts:deploy:avalanche`.
 - [ ] **Step 4:** Repetir los Steps 5-7 de la Tarea 14 pero con `POLFIN_CHAIN_MODE=avalanche` y verificando en `snowtrace.io` (sin `testnet.`).
 
