@@ -43,7 +43,7 @@ export const REGLAS = {
 const $ar = (n) => '$' + Math.round(n).toLocaleString('es-AR');
 
 /** Corre UN ciclo de monitoreo. Determinístico. Devuelve lo detectado. */
-export function ciclarMonitoreo(db, { ventanaVencimiento } = {}) {
+export async function ciclarMonitoreo(db, { ventanaVencimiento } = {}) {
   const corridaId = randomUUID();
   const auditar = crearAuditor(db, corridaId);
   const ventana = Number(ventanaVencimiento ?? REGLAS.vencimiento_ventana_dias);
@@ -102,7 +102,7 @@ export function ciclarMonitoreo(db, { ventanaVencimiento } = {}) {
     const monto = Math.round((c.limite * REGLAS.ampliacion_factor) / 1000) * 1000;
 
     // MISMO pipeline del Prompt A, origen proactivo → gate SIEMPRE.
-    const r = evaluarCredito(db, {
+    const r = await evaluarCredito(db, {
       deudorId: c.id, acreedorId: acreedor.a, monto,
       origen: 'proactiva',
       contexto: 'ampliación de crédito propuesta por Ángela (monitoreo proactivo)',
@@ -154,7 +154,7 @@ export function ciclarMonitoreo(db, { ventanaVencimiento } = {}) {
       : `${a.nombre} nunca se atrasaba y ya lleva ${actual} días vencido — la desviación es la señal. Recordatorio de cobro listo por ${$ar(a.monto)}.`;
 
     // no mueve plata → Ángela lo entrega directo (allowlist libre)
-    ejecutarTool(db, 'notificarDueno', { mensaje: `COBRO ANTES DE QUE ESCALE: ${detalle}`, tipo: 'info' });
+    await ejecutarTool(db, 'notificarDueno', { mensaje: `COBRO ANTES DE QUE ESCALE: ${detalle}`, tipo: 'info' });
     auditar('tool_call', { tool: 'notificarDueno', params: { deudor: a.nombre }, resultado: { entregada: true } });
     registrar('riesgo_atraso', clave, `${a.nombre} se está atrasando más que su patrón`, detalle,
       { atraso_actual: actual, historico: +hist.toFixed(1), monto: a.monto, deudor_id: a.id });
@@ -176,7 +176,7 @@ export function ciclarMonitoreo(db, { ventanaVencimiento } = {}) {
     const cuando = dias < 0 ? `venció hace ${-dias} días` : dias === 0 ? 'vence HOY' : `vence en ${dias} días`;
     const detalle = `El e-pagaré #${i.id} de ${i.deudor_nombre} por ${$ar(i.monto)} ${cuando} (${i.fecha_vencimiento}). Dejé lista la notificación de cobro para ${i.acreedor_nombre}; la liquidación se dispara con tu OK.`;
 
-    ejecutarTool(db, 'notificarDueno', { mensaje: `VENCIMIENTO: ${detalle}`, tipo: 'info' });
+    await ejecutarTool(db, 'notificarDueno', { mensaje: `VENCIMIENTO: ${detalle}`, tipo: 'info' });
     auditar('tool_call', { tool: 'notificarDueno', params: { instrumento: i.id }, resultado: { entregada: true } });
     registrar('vencimiento', clave, `e-Pagaré de ${i.deudor_nombre} ${cuando}`, detalle,
       { instrumento_id: i.id, monto: i.monto, fecha_vencimiento: i.fecha_vencimiento, dias });
@@ -199,9 +199,9 @@ export function ciclarMonitoreo(db, { ventanaVencimiento } = {}) {
 export function arrancarMonitor(db) {
   const seg = Number(process.env.POLFIN_MONITOR_INTERVAL || 300);
   if (!seg || seg <= 0) return null;
-  const timer = setInterval(() => {
+  const timer = setInterval(async () => {
     try {
-      const r = ciclarMonitoreo(db);
+      const r = await ciclarMonitoreo(db);
       if (r.total_nuevas > 0) console.log(`[monitor] Ángela detectó ${r.total_nuevas} situación(es) nueva(s)`);
     } catch (e) {
       console.error('[monitor] error en el ciclo:', e.message);

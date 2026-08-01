@@ -285,10 +285,10 @@ app.get('/api/resumen', (_req, res) => {
 
 // INVOCACIÓN DIRECTA (sin LLM): corre la máquina de estados determinística.
 // Es lo que usa la UI. body: { deudor_id, acreedor_id, monto, contexto? }
-app.post('/api/agente/evaluar-credito', (req, res) => {
+app.post('/api/agente/evaluar-credito', async (req, res) => {
   try {
     const { deudor_id, acreedor_id, monto, contexto } = req.body || {};
-    const resultado = evaluarCredito(db, {
+    const resultado = await evaluarCredito(db, {
       deudorId: Number(deudor_id),
       acreedorId: Number(acreedor_id),
       monto: Number(monto),
@@ -312,9 +312,9 @@ app.post('/api/agente/conversar', async (req, res) => {
 
 // MONITOREO PROACTIVO: fuerza un ciclo YA (para gatillar en vivo en el pitch,
 // sin esperar el intervalo). body opcional: { ventana_vencimiento }
-app.post('/api/agente/monitorear', (req, res) => {
+app.post('/api/agente/monitorear', async (req, res) => {
   try {
-    res.json(ciclarMonitoreo(db, { ventanaVencimiento: req.body?.ventana_vencimiento }));
+    res.json(await ciclarMonitoreo(db, { ventanaVencimiento: req.body?.ventana_vencimiento }));
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }
@@ -353,12 +353,12 @@ app.get('/api/solicitudes', (_req, res) => {
 });
 
 // Human-in-the-loop: el dueño aprueba o rechaza una solicitud pendiente
-app.post('/api/solicitudes/:id/aprobar', (req, res) => {
-  try { res.json(aprobarSolicitud(db, Number(req.params.id))); }
+app.post('/api/solicitudes/:id/aprobar', async (req, res) => {
+  try { res.json(await aprobarSolicitud(db, Number(req.params.id))); }
   catch (e) { res.status(400).json({ error: String(e.message || e) }); }
 });
-app.post('/api/solicitudes/:id/rechazar', (req, res) => {
-  try { res.json(rechazarSolicitud(db, Number(req.params.id))); }
+app.post('/api/solicitudes/:id/rechazar', async (req, res) => {
+  try { res.json(await rechazarSolicitud(db, Number(req.params.id))); }
   catch (e) { res.status(400).json({ error: String(e.message || e) }); }
 });
 

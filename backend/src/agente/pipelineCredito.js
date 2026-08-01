@@ -37,7 +37,7 @@ const ESTADO_SOLICITUD = {
 
 // Ejecuta una tool determinística dejando el mismo rastro de auditoría de
 // siempre: decisión de policy + llamada con parámetros y resultado.
-function paso(db, auditar, nombre, input, ctx) {
+async function paso(db, auditar, nombre, input, ctx) {
   const pol = evaluarPolicy(nombre, input);
   auditar('policy', { tool: nombre, params: input, permitido: pol.permitido, motivo: pol.motivo });
   if (!pol.permitido) {
@@ -45,7 +45,7 @@ function paso(db, auditar, nombre, input, ctx) {
     auditar('tool_call', { tool: nombre, params: input, resultado: bloqueo });
     return bloqueo;
   }
-  const resultado = ejecutarTool(db, nombre, input, ctx);
+  const resultado = await ejecutarTool(db, nombre, input, ctx);
   auditar('tool_call', { tool: nombre, params: input, resultado });
   return resultado;
 }
@@ -55,7 +55,7 @@ function paso(db, auditar, nombre, input, ctx) {
  * Determinístico: mismos datos → mismos estados → misma decisión.
  * @returns {{ estado, estados, datos, pendiente_por }}
  */
-export function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen = 'directa' }) {
+export async function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen = 'directa' }) {
   const auditar = crearAuditor(db, corridaId);
   const ctx = { solicitudId };
   const estados = [];
@@ -66,18 +66,18 @@ export function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, c
   marcar('RECIBIDO', `pedido de $${monto.toLocaleString('es-AR')} (deudor ${deudorId} → acreedor ${acreedorId})`);
 
   // ---- SCORING ---------------------------------------------------------
-  datos.historial = paso(db, auditar, 'getHistorialCliente', { entidadId: deudorId }, ctx);
-  datos.scoring = paso(db, auditar, 'calcularScoring', { entidadId: deudorId }, ctx);
+  datos.historial = await paso(db, auditar, 'getHistorialCliente', { entidadId: deudorId }, ctx);
+  datos.scoring = await paso(db, auditar, 'calcularScoring', { entidadId: deudorId }, ctx);
   marcar('SCORING', `score ${datos.scoring.score} sobre ${datos.historial.operaciones} operaciones verificables`);
 
   // ---- CONDICIONES -----------------------------------------------------
-  datos.macro = paso(db, auditar, 'consultarMacro', {}, ctx);
-  datos.condiciones = paso(db, auditar, 'decidirCondiciones', { entidadId: deudorId, montoSolicitado: monto }, ctx);
+  datos.macro = await paso(db, auditar, 'consultarMacro', {}, ctx);
+  datos.condiciones = await paso(db, auditar, 'decidirCondiciones', { entidadId: deudorId, montoSolicitado: monto }, ctx);
   marcar('CONDICIONES', datos.condiciones.recomendacion);
 
   // ¿El motor rechaza? (score en zona roja o monto fuera del límite sugerido)
   if (datos.condiciones.rechazar || !datos.condiciones.dentro_del_limite) {
-    paso(db, auditar, 'notificarDueno', {
+    await paso(db, auditar, 'notificarDueno', {
       mensaje: `Pedido de ${datos.scoring.entidad.nombre} por $${monto.toLocaleString('es-AR')}: NO recomendado. ${datos.condiciones.recomendacion}`,
       tipo: 'info',
     }, ctx);
@@ -100,7 +100,7 @@ export function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, c
     // ---- ⏸ APPROVAL GATE ASÍNCRONO ------------------------------------
     // Estado persistido, NO espera bloqueante: acá el pipeline se detiene
     // y reanudarPipeline() retoma cuando el dueño responda.
-    ejecutarTool(db, 'notificarDueno', {
+    await ejecutarTool(db, 'notificarDueno', {
       mensaje: `APROBACIÓN REQUERIDA: crédito de $${monto.toLocaleString('es-AR')} para ${datos.scoring.entidad.nombre} (score ${datos.condiciones.score}, ${datos.condiciones.condiciones.riesgo}). Condiciones sugeridas: tasa ${datos.condiciones.condiciones.tasa_sugerida_tna}% TNA, hasta ${datos.condiciones.condiciones.plazo_max_dias} días. Supera el límite autónomo del agente: falta tu OK.`,
       tipo: 'aprobacion_requerida',
     }, ctx);
@@ -110,8 +110,8 @@ export function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, c
 
   // ---- EJECUTANDO → COMPLETADO ----------------------------------------
   marcar('EJECUTANDO', 'dentro del límite autónomo: emito instrumento y actualizo reputación');
-  datos.instrumento = paso(db, auditar, 'generarInstrumento', inputInstrumento, ctx);
-  datos.onchain = paso(db, auditar, 'registrarScoreOnChain', { entidadId: deudorId, score: datos.condiciones.score }, ctx);
+  datos.instrumento = await paso(db, auditar, 'generarInstrumento', inputInstrumento, ctx);
+  datos.onchain = await paso(db, auditar, 'registrarScoreOnChain', { entidadId: deudorId, score: datos.condiciones.score }, ctx);
   marcar('COMPLETADO', `e-pagaré ${datos.instrumento.contrato_address} emitido`);
   return cerrar(db, auditar, solicitudId, 'COMPLETADO', estados, datos, null);
 }
@@ -121,7 +121,7 @@ export function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, c
  * `decision`: 'aprobar' ejecuta con la marca de aprobación humana explícita;
  * 'rechazar' cierra en RECHAZADO. Retoma EXACTAMENTE desde donde quedó.
  */
-export function reanudarPipeline(db, solicitudId, decision) {
+export async function reanudarPipeline(db, solicitudId, decision) {
   const sol = db.prepare('SELECT * FROM solicitudes_credito WHERE id = ?').get(solicitudId);
   if (!sol) throw new Error('solicitud inexistente');
   if (sol.estado !== 'pendiente_aprobacion') {
@@ -150,9 +150,9 @@ export function reanudarPipeline(db, solicitudId, decision) {
   auditar('aprobacion_humana', { tool: 'generarInstrumento', params: input, permitido: pol.permitido, motivo: 'el dueño aprobó la operación' });
 
   marcar('EJECUTANDO', 'aprobación humana registrada: retomo donde quedé');
-  datos.instrumento = ejecutarTool(db, 'generarInstrumento', input, { solicitudId });
+  datos.instrumento = await ejecutarTool(db, 'generarInstrumento', input, { solicitudId });
   auditar('tool_call', { tool: 'generarInstrumento', params: input, resultado: datos.instrumento });
-  datos.onchain = ejecutarTool(db, 'registrarScoreOnChain', { entidadId: sol.deudor_id, score: cond.score }, { solicitudId });
+  datos.onchain = await ejecutarTool(db, 'registrarScoreOnChain', { entidadId: sol.deudor_id, score: cond.score }, { solicitudId });
   auditar('tool_call', { tool: 'registrarScoreOnChain', resultado: datos.onchain });
   marcar('COMPLETADO', `e-pagaré ${datos.instrumento.contrato_address} emitido con OK del dueño`);
   return cerrar(db, auditar, solicitudId, 'COMPLETADO', estados, datos, null, /*yaDecidido*/ true);
