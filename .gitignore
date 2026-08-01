@@ -1,0 +1,23 @@
+# deps
+node_modules/
+
+# next
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+# db generada por el seed (se regenera con `npm run seed`)
+backend/data/*.db
+backend/data/*.db-journal
+backend/data/*.db-wal
+backend/data/*.db-shm
+
+# env — la ANTHROPIC_API_KEY vive acá y NO se sube NUNCA
+.env
+.env.*
+*.env
+.env*.local
+
+# misc
+*.log
+.DS_Store

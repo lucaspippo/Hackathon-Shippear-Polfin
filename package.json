@@ -1,0 +1,15 @@
+{
+  "name": "polfin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PolFin — el buró de crédito de la economía informal. Monorepo (backend + frontend).",
+  "scripts": {
+    "seed": "npm --prefix backend run seed",
+    "dev": "concurrently -n api,web -c yellow,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix frontend run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

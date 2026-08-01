@@ -1,0 +1,16 @@
+{
+  "name": "polfin-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "seed": "node src/seed.js",
+    "scores": "node src/scores-report.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
