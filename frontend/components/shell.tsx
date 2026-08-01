@@ -259,7 +259,7 @@ export function Shell() {
           )}
           {vista === "alertas" && <Alertas rol={rol} irA={irA} refresh={refresh} />}
           {vista === "aprobaciones" && (
-            <Aprobaciones rol={rol} solicitudes={solicitudes ?? []} recargar={recargar} irA={irA} />
+            <Aprobaciones rol={rol} solicitudes={solicitudes ?? []} recargar={recargar} irA={irA} abrirDoc={abrirDoc} />
           )}
           {vista === "decisiones" && (
             <Decisiones rol={rol} solicitudes={solicitudes ?? []} recargar={recargar} irA={irA} />

@@ -5,6 +5,7 @@
 // cualquier lado (comercio, consumidor, Pagos, Aprobaciones).
 import Image from "next/image";
 import { useEffect } from "react";
+import { jsPDF } from "jspdf";
 import { pesos, fechaCorta, type Comprobante, type Instrumento } from "@/lib/api";
 import { useApi } from "@/components/ui";
 
@@ -36,6 +37,114 @@ function Campo({ etiqueta, valor, mono, tono }: { etiqueta: string; valor: React
       </div>
     </div>
   );
+}
+
+// Arma el PDF del e-pagaré con jsPDF (dibujado a mano, no captura de pantalla):
+// el documento se entrega al cliente final por fuera de la app, así que tiene
+// que quedar claro e imprimible, no un screenshot del tema oscuro de la UI.
+function descargarPdf(i: Instrumento) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const margen = 20;
+  const anchoUtil = 210 - margen * 2;
+  let y = margen;
+
+  const linea = (texto: string, opts: { size?: number; bold?: boolean; color?: number[]; gap?: number } = {}) => {
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    doc.setFontSize(opts.size ?? 10);
+    doc.setTextColor(opts.color?.[0] ?? 20, opts.color?.[1] ?? 20, opts.color?.[2] ?? 20);
+    doc.text(texto, margen, y);
+    y += opts.gap ?? 6;
+  };
+  const gris = [110, 110, 110];
+
+  linea("PolFin", { size: 16, bold: true, gap: 6 });
+  linea("El buró de crédito de la economía informal", { size: 9, color: gris, gap: 8 });
+  doc.setDrawColor(210, 210, 210);
+  doc.line(margen, y, 210 - margen, y);
+  y += 9;
+
+  linea(`e-Pagaré N.º ${String(i.id).padStart(5, "0")}`, { size: 14, bold: true, gap: 6 });
+  linea(
+    `Instrumento de crédito comercial · emitido el ${fechaCorta(i.created_at)}`,
+    { size: 9.5, color: gris, gap: 10 },
+  );
+
+  const colDerecha = margen + anchoUtil / 2;
+  const yColumnas = y;
+  linea("ACREEDOR (A FAVOR DE)", { size: 8, bold: true, color: gris, gap: 5 });
+  linea(i.acreedor_nombre, { size: 11, gap: 5 });
+  linea(
+    `${i.acreedor_rubro ?? ""}${i.acreedor_ciudad ? ` · ${i.acreedor_ciudad}` : ""}`,
+    { size: 9, color: gris, gap: 5 },
+  );
+  const yTrasIzquierda = y;
+  y = yColumnas;
+  doc.text("DEUDOR (SE OBLIGA A PAGAR)", colDerecha, y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(20, 20, 20);
+  doc.text(i.deudor_nombre, colDerecha, y + 5);
+  doc.setFontSize(9);
+  doc.setTextColor(gris[0], gris[1], gris[2]);
+  doc.text(
+    `${i.deudor_tipo === "persona" ? "Consumidor final" : "Comercio"}${i.deudor_ciudad ? ` · ${i.deudor_ciudad}` : ""}`,
+    colDerecha, y + 10,
+  );
+  y = Math.max(yTrasIzquierda, y + 10) + 6;
+
+  doc.setDrawColor(225, 225, 225);
+  doc.setFillColor(247, 247, 247);
+  doc.roundedRect(margen, y, anchoUtil, 22, 2, 2, "FD");
+  const campo = (x: number, etiqueta: string, valor: string) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(gris[0], gris[1], gris[2]);
+    doc.text(etiqueta, x, y + 7);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(20, 20, 20);
+    doc.text(valor, x, y + 15);
+  };
+  const anchoCol = anchoUtil / 4;
+  campo(margen + 3, "MONTO", pesos(i.monto));
+  campo(margen + anchoCol + 3, "TASA", `${i.tasa_tna}% TNA`);
+  campo(margen + anchoCol * 2 + 3, "PLAZO", `${i.plazo_dias} días`);
+  campo(margen + anchoCol * 3 + 3, "VENCE", fechaCorta(i.fecha_vencimiento));
+  y += 30;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(60, 60, 60);
+  const parrafo = doc.splitTextToSize(
+    `Por el presente, ${i.deudor_nombre} se obliga a pagar a ${i.acreedor_nombre} la suma de ` +
+    `${pesos(i.monto)} a la tasa y plazo pactados, con vencimiento el ${fechaCorta(i.fecha_vencimiento)}. ` +
+    `Instrumento auto-ejecutable registrado on-chain, infalsificable y propiedad de las partes.`,
+    anchoUtil,
+  );
+  doc.text(parrafo, margen, y);
+  y += parrafo.length * 5 + 6;
+
+  doc.setDrawColor(225, 225, 225);
+  doc.setFillColor(250, 250, 250);
+  const alturaChain = i.red === "fuji" && i.token_id != null ? 30 : 24;
+  doc.roundedRect(margen, y, anchoUtil, alturaChain, 2, 2, "FD");
+  y += 6;
+  linea("REGISTRO ON-CHAIN", { size: 8, bold: true, color: gris, gap: 5 });
+  linea(`Red: Avalanche ${i.red === "fuji-mock" ? "Fuji (testnet · mock)" : i.red}`, { size: 9, gap: 5 });
+  linea(`Contrato: ${i.contrato_address}`, { size: 9, gap: 5 });
+  linea(`Tx hash: ${i.tx_hash}`, { size: 9, gap: 5 });
+  if (i.red === "fuji" && i.token_id != null) linea(`NFT: token #${i.token_id}`, { size: 9, gap: 5 });
+  y += 6;
+
+  const aceptado = i.aceptado === 1;
+  linea(
+    aceptado
+      ? `Deudor: aceptó${i.aceptado_at ? ` el ${fechaCorta(i.aceptado_at)}` : ""}.`
+      : "Deudor: pendiente de aceptación.",
+    { size: 9, color: aceptado ? [30, 130, 76] : gris, gap: 5 },
+  );
+
+  doc.save(`e-pagare-${i.id}.pdf`);
 }
 
 function EPagare({ id, onAceptar }: { id: number; onAceptar?: (id: number) => void }) {
@@ -137,10 +246,16 @@ function EPagare({ id, onAceptar }: { id: number; onAceptar?: (id: number) => vo
           <p className="text-[11.5px] leading-snug text-tenue">
             Entregáselo a tu cliente (impreso o por WhatsApp). No necesita entrar a PolFin.
           </p>
-          <button onClick={() => window.print()}
-            className="shrink-0 rounded-full border border-brand/50 px-3.5 py-1.5 text-[12.5px] font-semibold text-brand transition-colors hover:bg-brand/10">
-            Descargar / Imprimir
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button onClick={() => descargarPdf(i)}
+              className="rounded-full bg-brand px-3.5 py-1.5 text-[12.5px] font-semibold text-black transition-transform hover:scale-[1.02]">
+              Descargar PDF
+            </button>
+            <button onClick={() => window.print()}
+              className="rounded-full border border-brand/50 px-3.5 py-1.5 text-[12.5px] font-semibold text-brand transition-colors hover:bg-brand/10">
+              Imprimir
+            </button>
+          </div>
         </div>
       </div>
     </>
