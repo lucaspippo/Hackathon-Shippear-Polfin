@@ -21,9 +21,11 @@ const ic = {
 
 export function Sidebar({
   rol, vista, irA, pendientes, esperandoOk, ocultarCerebro = false,
+  colapsado = false, onToggle,
 }: {
   rol: Rol; vista: Vista; irA: (v: Vista) => void;
   pendientes: number; esperandoOk: boolean; ocultarCerebro?: boolean;
+  colapsado?: boolean; onToggle?: () => void;
 }) {
   const esConsumidor = false; // el consumidor final ya no es usuario de la app
 
@@ -55,19 +57,38 @@ export function Sidebar({
   ];
 
   return (
-    <aside className="flex w-[236px] shrink-0 flex-col border-r border-linea bg-panel">
-      <div className="px-5 pb-2 pt-5">
+    <aside
+      className={`relative flex shrink-0 flex-col border-r border-linea bg-panel transition-[width] duration-200 ${
+        colapsado ? "w-[68px]" : "w-[236px]"
+      }`}
+    >
+      {onToggle && (
+        <button
+          onClick={onToggle}
+          aria-label={colapsado ? "Expandir menú" : "Colapsar menú"}
+          title={colapsado ? "Expandir menú" : "Colapsar menú"}
+          className="absolute -right-3 top-16 z-10 flex size-6 items-center justify-center rounded-full border border-linea bg-carta text-tenue shadow-md transition-colors hover:text-tinta"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" className={`transition-transform ${colapsado ? "rotate-180" : ""}`} aria-hidden>
+            <path d="M15 5 8 12l7 7" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+
+      <div className={`pb-2 pt-5 ${colapsado ? "px-3" : "px-5"}`}>
         <Image src="/polfin-logo.jpeg" alt="PolFin" width={126} height={60} priority
-          className="h-auto w-[118px] rounded-md" />
-        <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-tenue">
-          El buró de la cadena
-        </div>
+          className={colapsado ? "h-auto w-9 rounded-md" : "h-auto w-[118px] rounded-md"} />
+        {!colapsado && (
+          <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-tenue">
+            El buró de la cadena
+          </div>
+        )}
       </div>
 
-      <nav className="mt-3 flex-1 space-y-5 overflow-y-auto px-3">
+      <nav className={`mt-3 flex-1 space-y-5 overflow-y-auto ${colapsado ? "px-2" : "px-3"}`}>
         {grupos.map((g, i) => (
           <div key={i}>
-            {g.titulo && (
+            {g.titulo && !colapsado && (
               <div className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-tenue/80">
                 {g.titulo}
               </div>
@@ -79,18 +100,25 @@ export function Sidebar({
                   <button
                     key={item.id}
                     onClick={() => irA(item.id)}
-                    className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-[13.5px] transition-colors ${
+                    title={colapsado ? item.etiqueta : undefined}
+                    className={`group relative flex w-full items-center rounded-xl text-[13.5px] transition-colors ${
+                      colapsado ? "justify-center px-0 py-2.5" : "gap-3 px-2.5 py-2"
+                    } ${
                       activo ? "bg-brand/12 font-medium text-brand" : "text-tinta/80 hover:bg-white/4 hover:text-tinta"
                     }`}
                   >
                     <svg width="19" height="19" viewBox="0 0 24 24" className={activo ? "text-brand" : "text-tenue group-hover:text-tinta"} aria-hidden>
                       {item.icono}
                     </svg>
-                    {item.etiqueta}
+                    {!colapsado && item.etiqueta}
                     {item.badge ? (
-                      <span className="num ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold leading-none text-black">
-                        {item.badge}
-                      </span>
+                      colapsado ? (
+                        <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-brand" />
+                      ) : (
+                        <span className="num ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold leading-none text-black">
+                          {item.badge}
+                        </span>
+                      )
                     ) : null}
                   </button>
                 );
@@ -101,27 +129,42 @@ export function Sidebar({
       </nav>
 
       {/* estado de Ángela + quién sos */}
-      <div className="space-y-2 border-t border-linea p-3">
-        <div className="flex items-center gap-2.5 rounded-xl bg-carta px-3 py-2.5">
-          <span className="flex size-8 items-center justify-center rounded-full bg-brand/15">
+      <div className={`space-y-2 border-t border-linea p-3 ${colapsado ? "flex flex-col items-center" : ""}`}>
+        <div
+          title={colapsado ? "Ángela" : undefined}
+          className={`flex items-center gap-2.5 rounded-xl bg-carta ${colapsado ? "justify-center px-2 py-2.5" : "px-3 py-2.5"}`}
+        >
+          <span className="relative flex size-8 items-center justify-center rounded-full bg-brand/15">
             <span className="size-3 rounded-full bg-brand" />
+            {colapsado && (
+              <span className="absolute -right-0.5 -top-0.5">
+                <Punto tono={esperandoOk ? "brand" : "tenue"} />
+              </span>
+            )}
           </span>
-          <div className="leading-tight">
-            <div className="text-[13px] font-medium">Ángela</div>
-            <div className="flex items-center gap-1.5 text-[11px] text-tenue">
-              <Punto tono={esperandoOk ? "brand" : "tenue"} />
-              {esperandoOk ? "Esperando tu OK" : "Atenta a la red"}
+          {!colapsado && (
+            <div className="leading-tight">
+              <div className="text-[13px] font-medium">Ángela</div>
+              <div className="flex items-center gap-1.5 text-[11px] text-tenue">
+                <Punto tono={esperandoOk ? "brand" : "tenue"} />
+                {esperandoOk ? "Esperando tu OK" : "Atenta a la red"}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-        <div className="flex items-center gap-2.5 px-3 py-1">
-          <span className="flex size-7 items-center justify-center rounded-full bg-white/8 text-[11px] font-semibold text-tenue">
+        <div
+          title={colapsado ? `${rol.persona} · ${rol.etiqueta}` : undefined}
+          className={`flex items-center gap-2.5 py-1 ${colapsado ? "justify-center px-0" : "px-3"}`}
+        >
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-[11px] font-semibold text-tenue">
             {rol.persona[0]}
           </span>
-          <div className="leading-tight">
-            <div className="text-[12.5px]">{rol.persona}</div>
-            <div className="text-[11px] text-tenue">{rol.etiqueta}</div>
-          </div>
+          {!colapsado && (
+            <div className="leading-tight">
+              <div className="text-[12.5px]">{rol.persona}</div>
+              <div className="text-[11px] text-tenue">{rol.etiqueta}</div>
+            </div>
+          )}
         </div>
       </div>
     </aside>
