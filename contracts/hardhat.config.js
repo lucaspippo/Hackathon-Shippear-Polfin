@@ -13,7 +13,12 @@ module.exports = {
     fuji: {
       url: process.env.POLFIN_FUJI_RPC_URL || 'https://api.avax-test.network/ext/bc/C/rpc',
       chainId: 43113,
-      accounts: process.env.POLFIN_OPERATOR_PRIVATE_KEY ? [process.env.POLFIN_OPERATOR_PRIVATE_KEY] : [],
+      accounts: process.env.POLFIN_OPERATOR_PRIVATE_KEY_FUJI ? [process.env.POLFIN_OPERATOR_PRIVATE_KEY_FUJI] : [],
+    },
+    avalanche: {
+      url: process.env.POLFIN_AVALANCHE_RPC_URL || 'https://api.avax.network/ext/bc/C/rpc',
+      chainId: 43114,
+      accounts: process.env.POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE ? [process.env.POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE] : [],
     },
   },
 };
