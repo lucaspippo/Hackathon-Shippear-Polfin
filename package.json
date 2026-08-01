@@ -7,7 +7,11 @@
     "seed": "npm --prefix backend run seed",
     "dev": "concurrently -n api,web -c yellow,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
     "dev:api": "npm --prefix backend run dev",
-    "dev:web": "npm --prefix frontend run dev"
+    "dev:web": "npm --prefix frontend run dev",
+    "contracts:install": "npm --prefix contracts install",
+    "contracts:compile": "npm --prefix contracts run compile",
+    "contracts:test": "npm --prefix contracts test",
+    "contracts:deploy:fuji": "npm --prefix contracts run deploy:fuji"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

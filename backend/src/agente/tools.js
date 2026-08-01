@@ -12,6 +12,9 @@
 // ============================================================================
 import { randomBytes } from 'node:crypto';
 import { calcularScore } from '../scoring.js';
+import { escribirScoreOnChain, mintearInstrumentoOnChain, liquidarPagoStablecoinOnChain } from '../chain/onchain.js';
+
+const modoChain = () => (process.env.POLFIN_CHAIN_MODE || 'mock').toLowerCase();
 
 // OJO: los nombres de tools deben matchear ^[a-zA-Z0-9_-]{1,64}$ (sin ñ).
 export const TOOLS = [
@@ -121,7 +124,7 @@ const mockAddress = () => '0x' + randomBytes(20).toString('hex');
 
 // ------------------------------------------------------------- implementaciones
 // ctx: { solicitudId } — para vincular instrumentos/notificaciones a la solicitud.
-export function ejecutarTool(db, nombre, input, ctx = {}) {
+export async function ejecutarTool(db, nombre, input, ctx = {}) {
   switch (nombre) {
     case 'getHistorialCliente': {
       const ent = db.prepare('SELECT * FROM entidades WHERE id = ?').get(input.entidadId);
@@ -191,24 +194,31 @@ export function ejecutarTool(db, nombre, input, ctx = {}) {
     }
 
     case 'generarInstrumento': {
-      // ======================= STUB ON-CHAIN (PROMPT 4) =======================
-      // HOY: registra el e-pagaré en la DB y devuelve dirección + tx hash MOCK.
-      // PROMPT 4: acá va el deploy REAL del contrato de instrumento de crédito
-      // en Avalanche Fuji (Solidity + ethers.js): desplegar el contrato con
-      // (deudor, acreedor, monto, tasa, vencimiento) y guardar la dirección y
-      // el tx hash reales que devuelva la red. El resto del sistema NO cambia.
-      // ========================================================================
+      // POLFIN_CHAIN_MODE=fuji: mintea un NFT real en el contrato EPagare.
+      // POLFIN_CHAIN_MODE=mock (default): mismo comportamiento que siempre.
       const venc = new Date(Date.now() + input.plazoDias * 24 * 60 * 60 * 1000)
         .toISOString().slice(0, 10);
-      const contrato = mockAddress();
-      const tx = mockHash();
+      const red = modoChain() === 'fuji' ? 'fuji' : 'fuji-mock';
+      let contrato, tx, tokenId = null;
+      if (modoChain() === 'fuji') {
+        const resultadoChain = await mintearInstrumentoOnChain({
+          deudorId: input.deudorId, acreedorId: input.acreedorId, monto: input.monto,
+          tasaTna: input.tasaTna, plazoDias: input.plazoDias, fechaVencimiento: venc,
+        });
+        contrato = resultadoChain.contrato_address;
+        tx = resultadoChain.tx_hash;
+        tokenId = resultadoChain.token_id;
+      } else {
+        contrato = mockAddress();
+        tx = mockHash();
+      }
       const r = db.prepare(`
         INSERT INTO instrumentos
           (solicitud_id, deudor_id, acreedor_id, monto, tasa_tna, plazo_dias,
-           fecha_vencimiento, contrato_address, tx_hash, red)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'fuji-mock')
+           fecha_vencimiento, contrato_address, tx_hash, red, token_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(ctx.solicitudId ?? null, input.deudorId, input.acreedorId, input.monto,
-        input.tasaTna, input.plazoDias, venc, contrato, tx);
+        input.tasaTna, input.plazoDias, venc, contrato, tx, red, tokenId);
       return {
         instrumento_id: Number(r.lastInsertRowid),
         tipo: 'e-pagare',
@@ -218,38 +228,44 @@ export function ejecutarTool(db, nombre, input, ctx = {}) {
         fecha_vencimiento: venc,
         contrato_address: contrato,
         tx_hash: tx,
-        red: 'fuji-mock',
-        nota: 'MOCK: en el Prompt 4 esto es un smart contract real en Avalanche Fuji',
+        token_id: tokenId,
+        red,
+        nota: red === 'fuji'
+          ? 'NFT del e-pagaré minteado en Avalanche Fuji (testnet)'
+          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji con los contratos deployados para el mint real',
       };
     }
 
     case 'registrarScoreOnChain': {
-      // ======================= STUB ON-CHAIN (PROMPT 4) =======================
-      // HOY: registra en DB con tx hash MOCK.
-      // PROMPT 4: acá va la escritura REAL en el contrato de scoring registry
-      // en Fuji (mapping entidadId → score + timestamp + hash de evidencia).
-      // ========================================================================
-      const tx = mockHash();
+      const red = modoChain() === 'fuji' ? 'fuji' : 'fuji-mock';
+      const tx = modoChain() === 'fuji'
+        ? (await escribirScoreOnChain(input.entidadId, input.score)).tx_hash
+        : mockHash();
       db.prepare(`
         INSERT INTO scores_onchain (entidad_id, score, tx_hash, red)
-        VALUES (?, ?, ?, 'fuji-mock')
-      `).run(input.entidadId, input.score, tx);
+        VALUES (?, ?, ?, ?)
+      `).run(input.entidadId, input.score, tx, red);
       return {
-        entidad_id: input.entidadId, score: input.score, tx_hash: tx, red: 'fuji-mock',
-        nota: 'MOCK: en el Prompt 4 esto escribe en el scoring registry real de Fuji',
+        entidad_id: input.entidadId, score: input.score, tx_hash: tx, red,
+        nota: red === 'fuji'
+          ? 'Score escrito en el ScoreRegistry real de Avalanche Fuji (testnet)'
+          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji con los contratos deployados para la escritura real',
       };
     }
 
     case 'ejecutarPagoStablecoin': {
-      // ======================= STUB ON-CHAIN (PROMPT 4) =======================
-      // PROMPT 4: transferencia real de USDC de prueba en Fuji (ethers.js).
       // Esta tool SIEMPRE requiere aprobación humana (ver policy.js), así que
       // en el flujo normal llega acá solo después de un OK explícito del dueño.
-      // ========================================================================
+      const red = modoChain() === 'fuji' ? 'fuji' : 'fuji-mock';
+      const tx = modoChain() === 'fuji'
+        ? (await liquidarPagoStablecoinOnChain({ monto: input.monto, destino: input.destino })).tx_hash
+        : mockHash();
       return {
         monto_usdc: input.monto, destino: input.destino,
-        tx_hash: mockHash(), red: 'fuji-mock',
-        nota: 'MOCK: en el Prompt 4 esto liquida USDC de prueba en Fuji',
+        tx_hash: tx, red,
+        nota: red === 'fuji'
+          ? 'USDC de prueba (pfUSDC) minteado y liquidado en Avalanche Fuji (testnet)'
+          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji con los contratos deployados para la liquidación real',
       };
     }
 

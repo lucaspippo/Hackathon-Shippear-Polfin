@@ -9,7 +9,7 @@ import type { Rol, Vista } from "@/lib/roles";
 import { Carta, Etiqueta, Pill, Punto } from "@/components/ui";
 import { fechaRelativa } from "@/lib/actividad";
 
-type Resuelta = { estado: string; instrumento?: { contrato_address: string; fecha_vencimiento: string } };
+type Resuelta = { estado: string; instrumento?: { contrato_address: string; fecha_vencimiento: string; tx_hash: string; red: string } };
 
 export function Aprobaciones({
   rol, solicitudes, recargar, irA,
@@ -117,7 +117,15 @@ export function Aprobaciones({
               {resuelta ? (
                 <div className="subiendo mt-3 rounded-xl border border-linea bg-ink/60 p-3 text-[12.5px] text-tinta/85">
                   {resuelta.estado === "aprobada" ? (
-                    <>e-Pagaré emitido{resuelta.instrumento ? <> (vence {resuelta.instrumento.fecha_vencimiento}, contrato <span className="num">{resuelta.instrumento.contrato_address.slice(0, 14)}…</span>)</> : ""}. Solicitud en <span className="font-semibold text-okk">COMPLETADO</span>.
+                    <>e-Pagaré emitido{resuelta.instrumento ? (
+                      <> (vence {resuelta.instrumento.fecha_vencimiento}, contrato{" "}
+                        {resuelta.instrumento.red === "fuji" ? (
+                          <a href={`https://testnet.snowtrace.io/address/${resuelta.instrumento.contrato_address}`} target="_blank" rel="noopener noreferrer"
+                            className="num text-brand hover:underline">{resuelta.instrumento.contrato_address.slice(0, 14)}…</a>
+                        ) : (
+                          <span className="num">{resuelta.instrumento.contrato_address.slice(0, 14)}…</span>
+                        )})</>
+                    ) : ""}. Solicitud en <span className="font-semibold text-okk">COMPLETADO</span>.
                     {" "}<button onClick={() => irA("pagos")} className="font-medium text-brand hover:underline">Ver en Pagos →</button></>
                   ) : (
                     <>Rechazo registrado. La solicitud queda como no aprobada.</>

@@ -24,7 +24,7 @@ const $ar = (n) => '$' + Number(n).toLocaleString('es-AR');
 // ---------------------------------------------------------------------------
 // 1) INVOCACIÓN DIRECTA — cero LLM. La máquina de estados y nada más.
 // ---------------------------------------------------------------------------
-export function evaluarCredito(db, { deudorId, acreedorId, monto, contexto = '', origen = 'directa', plazoPreferido = null }) {
+export async function evaluarCredito(db, { deudorId, acreedorId, monto, contexto = '', origen = 'directa', plazoPreferido = null }) {
   const deudor = db.prepare('SELECT * FROM entidades WHERE id = ?').get(deudorId);
   const acreedor = db.prepare('SELECT * FROM entidades WHERE id = ?').get(acreedorId);
   if (!deudor || !acreedor) throw new Error('deudor o acreedor inexistente');
@@ -42,7 +42,7 @@ export function evaluarCredito(db, { deudorId, acreedorId, monto, contexto = '',
     motivo: `motor=pipeline-deterministico · origen=${origen} · límite autónomo=${$ar(POLICY.limite_autonomo_pesos)}`,
   });
 
-  const r = correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen, plazoPreferido });
+  const r = await correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen, plazoPreferido });
 
   // Verbalización DETERMINÍSTICA: un template que solo repite los números
   // que ya calculó el pipeline. Sin LLM, sin invención posible.
@@ -56,16 +56,16 @@ export function evaluarCredito(db, { deudorId, acreedorId, monto, contexto = '',
 }
 
 // El gate asíncrono se cierra acá: el humano responde y el pipeline retoma.
-export function aprobarSolicitud(db, solicitudId) {
-  const r = reanudarPipeline(db, solicitudId, 'aprobar');
+export async function aprobarSolicitud(db, solicitudId) {
+  const r = await reanudarPipeline(db, solicitudId, 'aprobar');
   return {
     solicitud_id: solicitudId, estado: r.estado_solicitud,
     estados: r.estados, instrumento: r.datos.instrumento, score_onchain: r.datos.onchain,
   };
 }
 
-export function rechazarSolicitud(db, solicitudId) {
-  const r = reanudarPipeline(db, solicitudId, 'rechazar');
+export async function rechazarSolicitud(db, solicitudId) {
+  const r = await reanudarPipeline(db, solicitudId, 'rechazar');
   return { solicitud_id: solicitudId, estado: r.estado_solicitud, estados: r.estados };
 }
 
@@ -90,7 +90,7 @@ export async function conversar(db, { texto }) {
   }
 
   // MEDIO: exactamente el mismo pipeline determinístico (sin LLM).
-  const resultado = evaluarCredito(db, {
+  const resultado = await evaluarCredito(db, {
     deudorId: pedido.deudorId, acreedorId: pedido.acreedorId, monto: pedido.monto,
     contexto: `pedido conversacional: "${texto}"`,
     origen: 'conversacional',

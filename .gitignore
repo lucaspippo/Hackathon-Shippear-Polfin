@@ -24,3 +24,8 @@ backend/data/*.db-shm
 # misc
 *.log
 .DS_Store
+
+# contracts (Hardhat build output — see contracts/ package)
+contracts/artifacts/
+contracts/cache/
+contracts/deployments/
