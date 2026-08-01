@@ -8,14 +8,15 @@ import { apiPost, pesos, type Solicitud } from "@/lib/api";
 import type { Rol, Vista } from "@/lib/roles";
 import { Carta, Etiqueta, Pill, Punto } from "@/components/ui";
 import { fechaRelativa } from "@/lib/actividad";
+import type { DocRef } from "@/components/documento";
 
-type Resuelta = { estado: string; instrumento?: { contrato_address: string; fecha_vencimiento: string; tx_hash: string; red: string } };
+type Resuelta = { estado: string; instrumento?: { instrumento_id: number; contrato_address: string; fecha_vencimiento: string; tx_hash: string; red: string } };
 
 export function Aprobaciones({
-  rol, solicitudes, recargar, irA,
+  rol, solicitudes, recargar, irA, abrirDoc,
 }: {
   rol: Rol; solicitudes: Solicitud[]; recargar: () => void;
-  irA: (v: Vista, foco?: number) => void;
+  irA: (v: Vista, foco?: number) => void; abrirDoc: (d: DocRef) => void;
 }) {
   const [ocupada, setOcupada] = useState<number | null>(null);
   const [resueltas, setResueltas] = useState<Record<number, Resuelta>>({});
@@ -126,7 +127,10 @@ export function Aprobaciones({
                           <span className="num">{resuelta.instrumento.contrato_address.slice(0, 14)}…</span>
                         )})</>
                     ) : ""}. Solicitud en <span className="font-semibold text-okk">COMPLETADO</span>.
-                    {" "}<button onClick={() => irA("pagos")} className="font-medium text-brand hover:underline">Ver en Pagos →</button></>
+                    {" "}<button onClick={() => irA("pagos")} className="font-medium text-brand hover:underline">Ver en Pagos →</button>
+                    {resuelta.instrumento && (
+                      <>{" "}<button onClick={() => abrirDoc({ tipo: "epagare", id: resuelta.instrumento!.instrumento_id })} className="font-medium text-brand hover:underline">Ver documento →</button></>
+                    )}</>
                   ) : (
                     <>Rechazo registrado. La solicitud queda como no aprobada.</>
                   )}
