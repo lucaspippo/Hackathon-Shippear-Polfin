@@ -3,7 +3,12 @@ require('dotenv').config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: '0.8.24',
+  solidity: {
+    version: '0.8.24',
+    settings: {
+      evmVersion: 'cancun',
+    },
+  },
   networks: {
     fuji: {
       url: process.env.POLFIN_FUJI_RPC_URL || 'https://api.avax-test.network/ext/bc/C/rpc',
