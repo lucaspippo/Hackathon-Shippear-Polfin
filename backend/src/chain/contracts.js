@@ -1,6 +1,11 @@
 // backend/src/chain/contracts.js
 import { ethers } from 'ethers';
-import { obtenerWalletOperador } from './provider.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { obtenerWalletOperador, obtenerRedActiva } from './provider.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const ABI_SCORE_REGISTRY = [
   'function registrarScore(uint256 entidadId, uint256 score) external',
@@ -16,22 +21,30 @@ const ABI_MOCK_USDC = [
   'function mint(address to, uint256 amount) external',
 ];
 
-function direccion(envVar) {
-  const addr = process.env[envVar];
-  if (!addr) {
-    throw new Error(`falta ${envVar} — correr "npm run contracts:deploy:fuji" y copiar la address a backend/.env`);
+let cache = null;
+
+function leerDeployments() {
+  const red = obtenerRedActiva();
+  if (cache?.red === red) return cache.datos;
+  const ruta = join(__dirname, '..', '..', '..', 'contracts', 'deployments', `${red}.json`);
+  let datos;
+  try {
+    datos = JSON.parse(readFileSync(ruta, 'utf8'));
+  } catch {
+    throw new Error(`falta contracts/deployments/${red}.json — correr "npm run contracts:deploy:${red}" primero`);
   }
-  return addr;
+  cache = { red, datos };
+  return datos;
 }
 
 export function obtenerScoreRegistry() {
-  return new ethers.Contract(direccion('POLFIN_SCORE_REGISTRY_ADDRESS'), ABI_SCORE_REGISTRY, obtenerWalletOperador());
+  return new ethers.Contract(leerDeployments().scoreRegistry, ABI_SCORE_REGISTRY, obtenerWalletOperador());
 }
 
 export function obtenerEPagare() {
-  return new ethers.Contract(direccion('POLFIN_EPAGARE_ADDRESS'), ABI_EPAGARE, obtenerWalletOperador());
+  return new ethers.Contract(leerDeployments().ePagare, ABI_EPAGARE, obtenerWalletOperador());
 }
 
 export function obtenerMockUSDC() {
-  return new ethers.Contract(direccion('POLFIN_MOCK_USDC_ADDRESS'), ABI_MOCK_USDC, obtenerWalletOperador());
+  return new ethers.Contract(leerDeployments().mockUsdc, ABI_MOCK_USDC, obtenerWalletOperador());
 }
