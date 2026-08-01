@@ -14,6 +14,7 @@ import { generarInsights } from './agente/insights.js';
 import { ejecutarTool } from './agente/tools.js';
 import { ciclarMonitoreo, arrancarMonitor } from './agente/agenteProactivo.js';
 import { POLICY } from './agente/policy.js';
+import { esRedReal, redLabel, explorerUrl } from './chain/redes.js';
 
 // Puerto: en Render (y cualquier PaaS) manda process.env.PORT. En local usamos
 // POLFIN_API_PORT (para no chocar con el 3000 del front). Default 4000.
@@ -425,21 +426,22 @@ app.get('/api/onchain/score/:id', async (req, res) => {
     }
 
     const chainMode = (process.env.POLFIN_CHAIN_MODE || 'mock').toLowerCase();
-    const esFuji = rec?.red === 'fuji';
-    const contrato = esFuji ? (process.env.POLFIN_SCORE_REGISTRY_ADDRESS || null) : null;
+    const red = rec?.red ?? (esRedReal(chainMode) ? chainMode : 'mock');
+    const real = esRedReal(red);
     res.json({
       entidad: { id: ent.id, nombre: ent.nombre, tipo: ent.tipo, rol_cadena: ent.rol_cadena, rubro: ent.rubro, ciudad: ent.ciudad },
       registrado: !!rec,
       chain_mode: chainMode,
-      red: rec?.red ?? (chainMode === 'fuji' ? 'fuji' : 'fuji-mock'),
-      es_real: esFuji,
+      red,
+      red_label: redLabel(red),
+      es_real: real,
       score: rec?.score ?? null,
       tx_hash: rec?.tx_hash ?? null,
-      contrato_address: contrato,
+      contrato_address: null, // ScoreRegistry no tiene una address propia por entidad — se linkea por tx.
       timestamp: rec?.created_at ?? null,
-      // En fuji, el QR/enlace va al explorador real; en mock, el frontend arma
+      // En modo real, el QR/enlace va al explorador; en mock, el frontend arma
       // la URL a su propia vista /verificar/:id (registro honesto, no inventado).
-      explorer_url: esFuji && rec?.tx_hash ? `https://testnet.snowtrace.io/tx/${rec.tx_hash}` : null,
+      explorer_url: explorerUrl(red, 'tx', rec?.tx_hash),
     });
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
@@ -484,6 +486,20 @@ app.post('/api/solicitudes/:id/rechazar', async (req, res) => {
 });
 
 // Instrumentos (e-pagarés) y notificaciones al dueño
+// Agrega los campos de explorador (red_label/explorer_url/...) calculados a
+// partir de la fila de `instrumentos` — misma lógica que usa tools.js al
+// generar el instrumento, para que ambos caminos (el eco inmediato del
+// pipeline y esta consulta posterior) muestren exactamente lo mismo.
+function conExplorer(i) {
+  return {
+    ...i,
+    red_label: redLabel(i.red),
+    explorer_url: explorerUrl(i.red, 'address', i.contrato_address),
+    tx_explorer_url: explorerUrl(i.red, 'tx', i.tx_hash),
+    nft_explorer_url: i.token_id != null ? explorerUrl(i.red, 'nft', `${i.contrato_address}/${i.token_id}`) : null,
+  };
+}
+
 // Instrumentos (e-pagarés). Filtros: ?deudor=id, ?acreedor=id, ?entidad=id
 // (cualquiera de las dos caras), ?pendientes=1 (sin aceptar por el deudor).
 app.get('/api/instrumentos', (req, res) => {
@@ -501,7 +517,7 @@ app.get('/api/instrumentos', (req, res) => {
   if (entidad) { sql += ' AND (i.deudor_id = ? OR i.acreedor_id = ?)'; params.push(entidad, entidad); }
   if (pendientes) { sql += ' AND i.aceptado = 0'; }
   sql += ' ORDER BY i.aceptado ASC, i.id DESC';
-  res.json(db.prepare(sql).all(...params));
+  res.json(db.prepare(sql).all(...params).map(conExplorer));
 });
 
 // Un instrumento con todo lo necesario para renderizar el documento legible.
@@ -515,7 +531,7 @@ app.get('/api/instrumentos/:id', (req, res) => {
     WHERE i.id = ?
   `).get(req.params.id);
   if (!i) return res.status(404).json({ error: 'instrumento inexistente' });
-  res.json(i);
+  res.json(conExplorer(i));
 });
 
 // Aceptación del deudor: cierra el "las dos partes atestiguan". El consumidor
