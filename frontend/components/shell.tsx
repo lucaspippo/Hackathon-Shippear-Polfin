@@ -16,6 +16,7 @@ import { Pagos } from "@/components/pagos";
 import { Cartera } from "@/components/cartera";
 import { Alertas } from "@/components/alertas";
 import { Mapa } from "@/components/mapa";
+import { Perfil } from "@/components/perfil";
 import { NuevaVenta } from "@/components/nuevaVenta";
 import { Documento, type DocRef } from "@/components/documento";
 
@@ -267,6 +268,7 @@ export function Shell() {
           {vista === "pagos" && <Pagos rol={rol} refresh={refresh} recargar={recargar} abrirDoc={abrirDoc} />}
           {vista === "cartera" && <Cartera rol={rol} irA={irA} refresh={refresh} />}
           {vista === "mapa" && <Mapa rol={rol} irA={irA} />}
+          {vista === "perfil" && <Perfil rol={rol} entidadId={focal} irA={irA} abrirDoc={abrirDoc} />}
         </main>
       </div>
 

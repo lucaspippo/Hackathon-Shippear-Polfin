@@ -4,10 +4,12 @@
 import Image from "next/image";
 import type { Rol, Vista } from "@/lib/roles";
 import { Punto } from "@/components/ui";
+import { Avatar } from "@/components/avatar";
 
-type Item = { id: Vista; etiqueta: string; icono: React.ReactNode; badge?: number };
+type Item = { id: Vista; etiqueta: string; icono: React.ReactNode; badge?: number; foco?: number };
 
 const ic = {
+  perfil: <><circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.7" fill="none" /><path d="M5.5 19a6.5 6.5 0 0 1 13 0" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" /></>,
   inicio: <path d="M3 10.5 12 3l9 7.5M5.5 9v10.5h13V9" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
   cerebro: <><circle cx="6" cy="6" r="2.4" stroke="currentColor" strokeWidth="1.7" fill="none" /><circle cx="18" cy="7" r="2.4" stroke="currentColor" strokeWidth="1.7" fill="none" /><circle cx="12" cy="17" r="2.4" stroke="currentColor" strokeWidth="1.7" fill="none" /><path d="M8 7.2 15.7 7M7.3 8.1 10.8 15M16.8 9.1 13.2 15" stroke="currentColor" strokeWidth="1.5" /></>,
   alertas: <path d="M12 4a5 5 0 0 0-5 5v3.5L5.5 16h13L17 12.5V9a5 5 0 0 0-5-5Zm-2 14a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
@@ -23,7 +25,7 @@ export function Sidebar({
   rol, vista, irA, pendientes, esperandoOk, ocultarCerebro = false,
   colapsado = false, onToggle,
 }: {
-  rol: Rol; vista: Vista; irA: (v: Vista) => void;
+  rol: Rol; vista: Vista; irA: (v: Vista, foco?: number) => void;
   pendientes: number; esperandoOk: boolean; ocultarCerebro?: boolean;
   colapsado?: boolean; onToggle?: () => void;
 }) {
@@ -33,6 +35,7 @@ export function Sidebar({
     {
       titulo: null,
       items: [
+        { id: "perfil" as Vista, etiqueta: "Mi perfil de crédito", icono: ic.perfil, foco: rol.entidadId },
         { id: "inicio" as Vista, etiqueta: "Inicio", icono: ic.inicio },
         // El Cerebro es análisis de pantalla grande: se oculta al consumidor en mobile.
         ...(ocultarCerebro ? [] : [{ id: "cerebro" as Vista, etiqueta: "El Cerebro", icono: ic.cerebro }]),
@@ -99,7 +102,7 @@ export function Sidebar({
                 return (
                   <button
                     key={item.id}
-                    onClick={() => irA(item.id)}
+                    onClick={() => irA(item.id, item.foco)}
                     title={colapsado ? item.etiqueta : undefined}
                     className={`group relative flex w-full items-center rounded-xl text-[13.5px] transition-colors ${
                       colapsado ? "justify-center px-0 py-2.5" : "gap-3 px-2.5 py-2"
@@ -152,20 +155,19 @@ export function Sidebar({
             </div>
           )}
         </div>
-        <div
-          title={colapsado ? `${rol.persona} · ${rol.etiqueta}` : undefined}
-          className={`flex items-center gap-2.5 py-1 ${colapsado ? "justify-center px-0" : "px-3"}`}
+        <button
+          onClick={() => irA("perfil", rol.entidadId)}
+          title={colapsado ? `Mi perfil · ${rol.entidadNombre}` : "Ver mi perfil de crédito"}
+          className={`flex w-full items-center gap-2.5 rounded-xl py-1.5 transition-colors hover:bg-white/4 ${colapsado ? "justify-center px-0" : "px-3"}`}
         >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-[11px] font-semibold text-tenue">
-            {rol.persona[0]}
-          </span>
+          <Avatar id={rol.entidadId} nombre={rol.entidadNombre} size={28} />
           {!colapsado && (
-            <div className="leading-tight">
-              <div className="text-[12.5px]">{rol.persona}</div>
-              <div className="text-[11px] text-tenue">{rol.etiqueta}</div>
+            <div className="min-w-0 text-left leading-tight">
+              <div className="truncate text-[12.5px]">{rol.persona}</div>
+              <div className="text-[11px] text-tenue">{rol.etiqueta} · ver perfil</div>
             </div>
           )}
-        </div>
+        </button>
       </div>
     </aside>
   );

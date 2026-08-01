@@ -129,3 +129,16 @@ export type Red = {
   }[];
   aristas: { source: number; target: number; n: number; monto_total: number; vencidas: number; pendientes: number }[];
 };
+
+export type OnchainScore = {
+  entidad: { id: number; nombre: string; tipo: string; rol_cadena: string | null; rubro: string | null; ciudad: string };
+  registrado: boolean;
+  chain_mode: "mock" | "fuji" | string;
+  red: string;                 // "fuji" | "fuji-mock"
+  es_real: boolean;            // true si está escrito en Fuji real
+  score: number | null;
+  tx_hash: string | null;
+  contrato_address: string | null;
+  timestamp: string | null;
+  explorer_url: string | null; // Snowtrace (fuji) o null (mock)
+};

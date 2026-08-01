@@ -5,6 +5,7 @@ import { useState } from "react";
 import { apiPost, pesos, type Solicitud } from "@/lib/api";
 import type { Rol, Vista } from "@/lib/roles";
 import { Carta, Etiqueta, Pill, Punto, useApi } from "@/components/ui";
+import { Avatar } from "@/components/avatar";
 import { fechaRelativa } from "@/lib/actividad";
 
 export function Decisiones({
@@ -53,6 +54,10 @@ export function Decisiones({
           return (
             <Carta key={s.id} className="subiendo">
               <div className="flex items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                <button onClick={() => irA("perfil", s.deudor_id)} className="mt-0.5 shrink-0" title={`Ver perfil de ${s.deudor_nombre}`}>
+                  <Avatar id={s.deudor_id} nombre={s.deudor_nombre} size={38} />
+                </button>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     {pendiente ? (
@@ -80,6 +85,7 @@ export function Decisiones({
                       )}
                     </p>
                   )}
+                </div>
                 </div>
                 <div className="shrink-0 text-right">
                   <Etiqueta>Monto</Etiqueta>

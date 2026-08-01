@@ -11,6 +11,7 @@ import { evaluarCredito, conversar, aprobarSolicitud, rechazarSolicitud } from '
 import { chatAngela } from './agente/chatAngela.js';
 import { contextoMacroPublico } from './macro.js';
 import { generarInsights } from './agente/insights.js';
+import { ejecutarTool } from './agente/tools.js';
 import { ciclarMonitoreo, arrancarMonitor } from './agente/agenteProactivo.js';
 import { POLICY } from './agente/policy.js';
 
@@ -395,6 +396,51 @@ app.get('/api/agente/insights', (req, res) => {
     const entId = Number(req.query.entidadId);
     if (!Number.isFinite(entId)) return res.status(400).json({ error: 'falta entidadId' });
     res.json(generarInsights(db, entId));
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
+});
+
+// VERIFICACIÓN ON-CHAIN del score de una entidad. Prueba que el score no vive
+// solo en la DB de PolFin sino registrado en Avalanche (portable, infalsificable).
+// Devuelve el registro de scores_onchain; si no existe todavía, lo registra
+// (en mock es gratis; en fuji escribe en el ScoreRegistry real). El QR del
+// frontend apunta a Snowtrace (fuji) o a la vista propia /verificar (mock).
+app.get('/api/onchain/score/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const ent = db.prepare('SELECT id, nombre, tipo, rol_cadena, rubro, ciudad FROM entidades WHERE id = ?').get(id);
+    if (!ent) return res.status(404).json({ error: 'entidad inexistente' });
+
+    let rec = db.prepare('SELECT * FROM scores_onchain WHERE entidad_id = ? ORDER BY id DESC LIMIT 1').get(id);
+    if (!rec) {
+      // Registrar el score actual on-chain (get-or-register): así el perfil de
+      // cualquier entidad tiene siempre una prueba verificable. En fuji esto es
+      // una escritura real en el contrato; en mock, un hash simulado honesto.
+      const s = calcularScore(db, id);
+      if (s?.score != null) {
+        await ejecutarTool(db, 'registrarScoreOnChain', { entidadId: id, score: s.score });
+        rec = db.prepare('SELECT * FROM scores_onchain WHERE entidad_id = ? ORDER BY id DESC LIMIT 1').get(id);
+      }
+    }
+
+    const chainMode = (process.env.POLFIN_CHAIN_MODE || 'mock').toLowerCase();
+    const esFuji = rec?.red === 'fuji';
+    const contrato = esFuji ? (process.env.POLFIN_SCORE_REGISTRY_ADDRESS || null) : null;
+    res.json({
+      entidad: { id: ent.id, nombre: ent.nombre, tipo: ent.tipo, rol_cadena: ent.rol_cadena, rubro: ent.rubro, ciudad: ent.ciudad },
+      registrado: !!rec,
+      chain_mode: chainMode,
+      red: rec?.red ?? (chainMode === 'fuji' ? 'fuji' : 'fuji-mock'),
+      es_real: esFuji,
+      score: rec?.score ?? null,
+      tx_hash: rec?.tx_hash ?? null,
+      contrato_address: contrato,
+      timestamp: rec?.created_at ?? null,
+      // En fuji, el QR/enlace va al explorador real; en mock, el frontend arma
+      // la URL a su propia vista /verificar/:id (registro honesto, no inventado).
+      explorer_url: esFuji && rec?.tx_hash ? `https://testnet.snowtrace.io/tx/${rec.tx_hash}` : null,
+    });
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }

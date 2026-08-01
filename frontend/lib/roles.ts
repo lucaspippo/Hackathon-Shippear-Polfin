@@ -75,4 +75,4 @@ export const rolPorId = (id: RolId) => ROLES.find((r) => r.id === id)!;
 
 export type Vista =
   | "inicio" | "cerebro" | "alertas" | "aprobaciones" | "decisiones"
-  | "pagos" | "cartera" | "mapa" | "compras";
+  | "pagos" | "cartera" | "mapa" | "compras" | "perfil";

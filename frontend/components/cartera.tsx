@@ -5,13 +5,14 @@ import { useMemo } from "react";
 import { pesos, fechaCorta, type EntidadDetalle, type Score, type Tx } from "@/lib/api";
 import type { Rol, Vista } from "@/lib/roles";
 import { Carta, Etiqueta, Pill, Punto, tonoRiesgo, useApi } from "@/components/ui";
+import { Avatar } from "@/components/avatar";
 
-function FilaTx({ t, contraparte, irA }: { t: Tx; contraparte: string; irA?: () => void }) {
+function FilaTx({ t, contraparte, entidadId, irA }: { t: Tx; contraparte: string; entidadId?: number; irA?: () => void }) {
   const tono = t.estado === "vencida" ? "mal" : t.estado === "pendiente" ? "tenue" : "ok";
   return (
     <button onClick={irA} disabled={!irA}
       className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left transition-colors enabled:hover:bg-white/4">
-      <Punto tono={tono} />
+      <Avatar id={entidadId ?? null} nombre={contraparte} size={30} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13.5px]">{contraparte}</span>
         <span className="block text-[11.5px] text-tenue">
@@ -94,7 +95,7 @@ export function Cartera({
             <h3 className="text-[15px] font-semibold">Le fío a ({resumen.vivasCobrar.length} vivas)</h3>
             <div className="mt-2 divide-y divide-linea/60">
               {resumen.vivasCobrar.slice(0, 12).map((t) => (
-                <FilaTx key={t.id} t={t} contraparte={t.deudor_nombre ?? ""} irA={() => irA("cerebro", t.deudor_id)} />
+                <FilaTx key={t.id} t={t} contraparte={t.deudor_nombre ?? ""} entidadId={t.deudor_id} irA={() => irA("perfil", t.deudor_id)} />
               ))}
               {resumen.vivasCobrar.length === 0 && <p className="py-3 text-[12.5px] text-tenue">Nada vivo por cobrar.</p>}
             </div>
@@ -106,7 +107,7 @@ export function Cartera({
           </h3>
           <div className="mt-2 divide-y divide-linea/60">
             {(esConsumidor ? resumen.historial : resumen.vivasPagar.slice(0, 12)).map((t) => (
-              <FilaTx key={t.id} t={t} contraparte={t.acreedor_nombre ?? ""} irA={() => irA("cerebro", t.acreedor_id)} />
+              <FilaTx key={t.id} t={t} contraparte={t.acreedor_nombre ?? ""} entidadId={t.acreedor_id} irA={() => irA("perfil", t.acreedor_id)} />
             ))}
           </div>
         </Carta>
