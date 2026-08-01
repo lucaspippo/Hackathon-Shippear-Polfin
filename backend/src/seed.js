@@ -389,7 +389,7 @@ export async function sembrar() {
     INSERT INTO instrumentos
       (solicitud_id, deudor_id, acreedor_id, monto, tasa_tna, plazo_dias,
        fecha_vencimiento, estado, contrato_address, tx_hash, red)
-    VALUES (NULL, ?, ?, ?, ?, ?, ?, 'activo', ?, ?, 'fuji-mock')`);
+    VALUES (NULL, ?, ?, ?, ?, ?, ?, 'activo', ?, ?, 'mock')`);
   insInstr.run(ids.cayetano, ids.vicente, 1_850_000, 34, 60, fmt(addDays(HOY, 3)),
     '0x' + hexSeeded(40), '0x' + hexSeeded(64));
   insInstr.run(ids.gringo, ids.parana, 640_000, 41, 30, fmt(addDays(HOY, 6)),
@@ -403,7 +403,7 @@ export async function sembrar() {
     INSERT INTO instrumentos
       (solicitud_id, deudor_id, acreedor_id, monto, tasa_tna, plazo_dias,
        fecha_vencimiento, estado, contrato_address, tx_hash, red, aceptado)
-    VALUES (NULL, ?, ?, ?, ?, ?, ?, 'activo', ?, ?, 'fuji-mock', 0)`);
+    VALUES (NULL, ?, ?, ?, ?, ?, ?, 'activo', ?, ?, 'mock', 0)`);
   insInstrPend.run(ids.marcela, ids.corralon, 180_000, 29, 90, fmt(addDays(HOY, 90)),
     '0x' + hexSeeded(40), '0x' + hexSeeded(64));
 
