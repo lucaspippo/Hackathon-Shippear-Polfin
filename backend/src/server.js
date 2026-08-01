@@ -35,7 +35,9 @@ function dbEstaVacia() {
 }
 if (!existsSync(DB_PATH) || dbEstaVacia()) {
   console.log('[startup] DB ausente o vacía — sembrando dataset reproducible…');
-  sembrar();
+  // sembrar() es async (el historial corre el pipeline, cuyo borde on-chain es
+  // async). Top-level await: el server NO empieza a servir hasta que termine.
+  await sembrar();
   console.log('[startup] seed completo.');
 }
 

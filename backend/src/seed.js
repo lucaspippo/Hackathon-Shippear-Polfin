@@ -19,6 +19,8 @@
 import { rmSync, existsSync } from 'node:fs';
 import { openDb, createSchema, DB_PATH } from './db.js';
 import { calcularScore } from './scoring.js';
+import { evaluarCredito } from './agente/agente.js';
+import { ciclarMonitoreo } from './agente/agenteProactivo.js';
 
 // ---------------------------------------------------------------- PRNG seedeado
 const SEED = 20260801; // día de la hackathon
@@ -277,7 +279,7 @@ function generarTx({ acreedorId, deudorId, fechaEmision, plazo, monto, concepto,
   };
 }
 
-export function sembrar() {
+export async function sembrar() {
   if (existsSync(DB_PATH)) rmSync(DB_PATH);
   ['-journal', '-wal', '-shm'].forEach((s) => { if (existsSync(DB_PATH + s)) rmSync(DB_PATH + s); });
   const db = openDb();
@@ -522,11 +524,94 @@ export function sembrar() {
   const pagosSeed = db.prepare('SELECT COUNT(*) n, COALESCE(SUM(monto),0) m FROM pagos').get();
   console.log(`Pagos parciales sembrados: ${pagosSeed.n} sobre deudas vivas ($${pagosSeed.m.toLocaleString('es-AR')} ya cobrado a cuenta)`);
 
+  // Historial de decisiones/aprobaciones/monitoreo: corre el pipeline REAL para
+  // que CUALQUIER instalación limpia (incluido Render) arranque con las pantallas
+  // pobladas y la demo lista. El pipeline es async (borde on-chain), así que se
+  // espera antes de cerrar la DB. Ver sembrarHistorial().
+  await sembrarHistorial(db);
+
   db.close();
+}
+
+// ---------------------------------------------------------------------------
+// Historial inicial vía el pipeline DETERMINÍSTICO (no LLM). Deja sembrado, de
+// forma coherente y sin auto-ejecutar lo que requiere aprobación:
+//   · Decisiones/Aprobaciones: solicitudes ya procesadas (aprobadas+ejecutadas
+//     y alguna rechazada) + pendientes esperando OK (gate por monto + propuestas
+//     proactivas de Ángela).
+//   · e-Pagarés, scores on-chain, notificaciones, auditoría y detecciones que
+//     esas mismas corridas generan.
+// No toca `transacciones` ni `pagos`, así que scores, saldos y totales no cambian.
+// Cada caso va en try/catch: si uno falla, el seed base sigue en pie (el backend
+// nunca queda sin arrancar por esto).
+// ---------------------------------------------------------------------------
+async function sembrarHistorial(db) {
+  const evaluar = async (deudorId, acreedorId, monto, contexto, origen = 'directa') => {
+    try {
+      return await evaluarCredito(db, { deudorId, acreedorId, monto, contexto, origen });
+    } catch (e) {
+      console.error(`[seed:historial] caso ${deudorId}→${acreedorId} ($${monto}) falló: ${e.message}`);
+      return null;
+    }
+  };
+
+  // --- Casos narrativos (IDs base estables) --------------------------------
+  // Aprobada y ejecutada: Marcela presenta su score en el Corralón (comercio
+  // nuevo). Monto < límite y < límite autónomo → COMPLETADO directo.
+  await evaluar(14, 7, 180000, 'Marcela Benítez presentó su score en el Corralón Ovidio Lagos (comercio nuevo)');
+  // Rechazada: Rubén (moroso) pide más de lo que su score banca → RECHAZADA.
+  await evaluar(16, 9, 120000, 'Rubén Alcaraz pidió fiado en Almacén Doña Marta');
+  // Pendiente de aprobación: Los Pinos pide una reposición grande que supera el
+  // límite autónomo del agente ($500k) pero entra en su límite → gate humano.
+  await evaluar(11, 3, 2500000, 'Minimercado Los Pinos pidió reposición grande a El Paraná');
+
+  // --- Movimiento: algunas aprobadas más de buenos pagadores ---------------
+  // Fiados chicos (dentro del límite y del autónomo) → COMPLETADO. Elegidos por
+  // score real sobre un comercio donde el cliente YA opera (relación existente).
+  const candidatos = db.prepare(`
+    SELECT t.deudor_id AS d, t.acreedor_id AS a, COUNT(*) AS n
+    FROM transacciones t JOIN entidades e ON e.id = t.deudor_id
+    WHERE e.tipo = 'persona' AND t.deudor_id <> 14 AND t.deudor_id <> 16
+    GROUP BY t.deudor_id
+    ORDER BY t.deudor_id
+  `).all();
+  let aprobadasExtra = 0;
+  for (const c of candidatos) {
+    if (aprobadasExtra >= 3) break;
+    const s = calcularScore(db, c.d);
+    if (!s?.score || s.score < 680) continue;
+    const limite = s.condiciones.limite_sugerido_pesos;
+    if (!limite) continue;
+    // ~30% del límite, redondeado, topeado bien por debajo del límite autónomo
+    // → garantiza dentro_del_limite y ejecución directa (COMPLETADO).
+    const monto = Math.max(20000, Math.min(Math.round((limite * 0.3) / 1000) * 1000, 250000));
+    const r = await evaluar(c.d, c.a, monto, 'Fiado de mostrador aprobado por el motor');
+    if (r?.estado === 'aprobada') aprobadasExtra++;
+  }
+
+  // --- Ángela proactiva: propuestas de ampliación pendientes + detecciones ---
+  // Un ciclo del monitor deja: ampliaciones (origen='proactiva', PENDIENTE_
+  // APROBACION — nunca auto-ejecutadas), avisos de atraso fuera de patrón y
+  // vencimientos próximos → alimenta Aprobaciones, notificaciones y auditoría.
+  try {
+    await ciclarMonitoreo(db, {});
+  } catch (e) {
+    console.error(`[seed:historial] monitor proactivo: ${e.message}`);
+  }
+
+  const resumen = db.prepare('SELECT estado, COUNT(*) n FROM solicitudes_credito GROUP BY estado').all();
+  const det = db.prepare('SELECT COUNT(*) n FROM detecciones').get().n;
+  const aud = db.prepare('SELECT COUNT(*) n FROM auditoria').get().n;
+  console.log(
+    `Historial sembrado → solicitudes: ${resumen.map((r) => `${r.estado} ${r.n}`).join(', ')} · ` +
+    `detecciones ${det} · auditoría ${aud} entradas`
+  );
 }
 
 // Ejecutado directo (`npm run seed`) siembra SIEMPRE desde cero. Importado por
 // el server (auto-seed en arranque), NO se auto-ejecuta: el server decide.
+// sembrar() es async (borde on-chain del pipeline): esperamos y salimos con
+// código de error si falla, para que `npm run seed` no mienta.
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('/seed.js')) {
-  sembrar();
+  sembrar().catch((e) => { console.error('seed falló:', e); process.exit(1); });
 }
