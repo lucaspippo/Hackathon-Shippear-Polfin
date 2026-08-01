@@ -3,18 +3,29 @@
 **El buró de crédito de la economía informal, construido desde el comercio verificado.**
 Track Finanzas · Hackathon Shippear (Rosario, 1 de agosto 2026) · Sponsor: Team1 de Avalanche.
 
-Estado actual: **Prompt 4 (UI) — el shell visual**: sidebar · feed · panel de
-Ángela, selector de rol en la cadena, y el Cerebro (grafo de red que se
-re-centra según quién lo mira). On-chain sigue en stubs marcados.
+Un agente de IA (Ángela) ordena el crédito comercial de la cadena
+(fábrica → distribuidora → mayorista → minorista → consumidor) construyendo un
+buró de crédito **portable y verificable** entre comercios. La **decisión** de
+crédito es una fórmula determinística y auditable; la **IA** interpreta, explica,
+conversa y detecta señales tempranas — nunca inventa un número de decisión.
 
-**El shell** (`frontend/`): dark theme base, naranja PolFin como acento, números
-en mono tabular. Selector de rol (Fábrica/Distribuidora/Comercio/Consumidor)
-anclado a entidades reales de la DB — re-parametriza feed, cerebro, alertas y
-cartera. El Cerebro usa react-force-graph-2d sobre `GET /api/red` (31 nodos,
-54 relaciones agregadas): panel de info a la izquierda (score real + desglose +
-relaciones), grafo a la derecha; al enfocar un nodo se iluminan sus vecinos y
-las partículas viajan por las aristas. La acción demo de Ángela dispara el
-agente real del P3 y aterriza en el Cerebro con la decisión.
+**Qué hay hoy:**
+- **Scoring 0–1000** determinístico y explicable + **pipeline** de crédito como
+  máquina de estados (con approval gate humano para lo que mueve plata).
+- **Ángela por el AI Gateway de Vercel (V0)** — `LLM_MODE=gateway`, modelo
+  `anthropic/claude-sonnet-5`. Chat abierto: el dueño pregunta cualquier cosa y
+  Ángela razona encadenando tools de **solo lectura** sobre datos reales.
+- **Lectura macro** (`contexto_macro.json`): el contexto del país ajusta **plazo
+  y spread** (nunca el score), de forma neutral (solo riesgo, nunca política).
+- **Insights proactivos**: Ángela lee la red y genera tarjetas de early-warning
+  (cambio de comportamiento, concentración, oportunidad, anomalía, cobros).
+- **Shell** (`frontend/`, Next.js): selector de rol en la cadena
+  (Fábrica/Distribuidora/Mayorista/Minorista), feed inteligente, Cerebro
+  (grafo de red), mapa, "Nueva venta a plazo" que genera el e-pagaré para entregar.
+- On-chain (Avalanche Fuji) sigue en stubs marcados `PROMPT 4` en `tools.js`.
+
+**Deploy:** dos web services en Render (backend + frontend) vía `render.yaml`.
+La DB SQLite se **auto-seedea en el arranque**. Ver **[DEPLOY.md](DEPLOY.md)**.
 
 ## Estructura
 

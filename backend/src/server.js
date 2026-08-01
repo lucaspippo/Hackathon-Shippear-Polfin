@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import { existsSync } from 'node:fs';
 import { openDb, createSchema, DB_PATH } from './db.js';
+import { sembrar } from './seed.js';
 import { calcularScore } from './scoring.js';
 import { evaluarCredito, conversar, aprobarSolicitud, rechazarSolicitud } from './agente/agente.js';
 import { chatAngela } from './agente/chatAngela.js';
@@ -13,19 +14,42 @@ import { generarInsights } from './agente/insights.js';
 import { ciclarMonitoreo, arrancarMonitor } from './agente/agenteProactivo.js';
 import { POLICY } from './agente/policy.js';
 
-// Variable propia (no el PORT genérico) para no chocar con el frontend
-// cuando un runner inyecta PORT en el entorno compartido.
-const PORT = process.env.POLFIN_API_PORT || 4000;
+// Puerto: en Render (y cualquier PaaS) manda process.env.PORT. En local usamos
+// POLFIN_API_PORT (para no chocar con el 3000 del front). Default 4000.
+const PORT = process.env.PORT || process.env.POLFIN_API_PORT || 4000;
 
-if (!existsSync(DB_PATH)) {
-  console.error('No existe la DB. Corré primero: npm run seed');
-  process.exit(1);
+// AUTO-SEED EN ARRANQUE (producción con disco efímero): si la DB no existe o
+// está vacía, se siembra el dataset reproducible ANTES de servir requests. Así
+// el backend en Render siempre levanta con los 1.288 registros y los perfiles
+// diseñados, aunque el disco se haya borrado en el deploy. El seed local
+// (`npm run seed`) sigue igual: reproducible y desde cero.
+function dbEstaVacia() {
+  try {
+    const probe = openDb();
+    const n = probe.prepare('SELECT COUNT(*) AS n FROM entidades').get().n;
+    probe.close();
+    return n === 0;
+  } catch {
+    return true; // sin tabla/DB corrupta → tratar como vacía
+  }
 }
+if (!existsSync(DB_PATH) || dbEstaVacia()) {
+  console.log('[startup] DB ausente o vacía — sembrando dataset reproducible…');
+  sembrar();
+  console.log('[startup] seed completo.');
+}
+
 const db = openDb();
 createSchema(db);
 
 const app = express();
-app.use(cors());
+// CORS: aceptamos el origen del frontend. FRONTEND_URL (coma-separado) lo acota
+// en producción; sin setear, se refleja cualquier origen (útil para *.onrender.com
+// y pruebas). Nunca usamos credenciales/cookies, así que reflejar es seguro.
+const origenesCors = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map((s) => s.trim())
+  : true;
+app.use(cors({ origin: origenesCors }));
 app.use(express.json());
 
 // Columnas de pago derivadas de la tabla `pagos`, para que TODA la app cuadre:

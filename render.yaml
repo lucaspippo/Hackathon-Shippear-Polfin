@@ -1,0 +1,63 @@
+# ============================================================================
+# PolFin — Blueprint de Render (monorepo: backend Node + frontend Next.js).
+# ----------------------------------------------------------------------------
+# Cómo usar:
+#   1) En Render: New → Blueprint → apuntar a este repo (rama master).
+#   2) Render crea los DOS servicios. Cargá los secretos marcados `sync: false`
+#      en el dashboard (ver DEPLOY.md).
+#   3) Orden: el BACKEND primero (para tener su URL pública), después seteá
+#      NEXT_PUBLIC_API_URL del frontend con esa URL y (re)deployá el frontend.
+#
+# Render inyecta `PORT` solo — NO lo declaramos. El backend bindea a
+# process.env.PORT; el frontend arranca con `next start -p $PORT`.
+# La DB es SQLite (node:sqlite) y se auto-seedea en el arranque si el disco
+# efímero está vacío — no hace falta disco persistente ni Postgres.
+# ============================================================================
+services:
+  # -------------------------------------------------------------- BACKEND (API)
+  - type: web
+    name: polfin-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Ángela por el AI Gateway de Vercel (V0)
+      - key: LLM_MODE
+        value: gateway
+      - key: GATEWAY_MODEL
+        value: anthropic/claude-sonnet-5
+      - key: AI_GATEWAY_API_KEY   # SECRETO — cargar en el dashboard
+        sync: false
+      # Origen permitido por CORS (la URL del frontend en Render). Opcional:
+      # sin setear, el backend refleja cualquier origen. Setealo cuando tengas
+      # la URL del front para acotarlo. Ej: https://polfin-frontend.onrender.com
+      - key: FRONTEND_URL
+        sync: false
+      # Monitor proactivo de fondo apagado en prod (los insights se computan en
+      # vivo; el botón "Vigilá la red ahora" lo dispara on-demand igual).
+      - key: POLFIN_MONITOR_INTERVAL
+        value: "0"
+
+  # ------------------------------------------------------------- FRONTEND (Next)
+  - type: web
+    name: polfin-frontend
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npx next start -p $PORT
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # URL pública del BACKEND en Render. Se inlinea en el build de Next, así
+      # que hay que setearla ANTES de buildear el front (por eso backend primero).
+      # Ej: https://polfin-backend.onrender.com
+      - key: NEXT_PUBLIC_API_URL   # cargar en el dashboard con la URL real del backend
+        sync: false

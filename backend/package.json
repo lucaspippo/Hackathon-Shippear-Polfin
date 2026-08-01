@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
+    "start": "node src/server.js",
     "dev": "node --env-file-if-exists=.env src/server.js",
     "seed": "node --env-file-if-exists=.env src/seed.js",
     "scores": "node --env-file-if-exists=.env src/scores-report.js",
