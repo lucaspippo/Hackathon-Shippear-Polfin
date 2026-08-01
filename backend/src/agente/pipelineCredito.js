@@ -55,7 +55,7 @@ async function paso(db, auditar, nombre, input, ctx) {
  * Determinístico: mismos datos → mismos estados → misma decisión.
  * @returns {{ estado, estados, datos, pendiente_por }}
  */
-export async function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen = 'directa' }) {
+export async function correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen = 'directa', plazoPreferido = null }) {
   const auditar = crearAuditor(db, corridaId);
   const ctx = { solicitudId };
   const estados = [];
@@ -86,10 +86,14 @@ export async function correrPipeline(db, { deudorId, acreedorId, monto, solicitu
   }
 
   // ---- POLICY_CHECK ----------------------------------------------------
+  // El plazo del instrumento = el macro-aware por riesgo, topeado por lo que el
+  // vendedor pidió (si pidió menos). Ángela nunca lo estira más allá del máximo.
+  const plazoMax = datos.condiciones.condiciones.plazo_max_dias;
+  const plazoInstrumento = plazoPreferido ? Math.min(plazoPreferido, plazoMax) : plazoMax;
   const inputInstrumento = {
     deudorId, acreedorId, monto,
     tasaTna: datos.condiciones.condiciones.tasa_sugerida_tna,
-    plazoDias: datos.condiciones.condiciones.plazo_max_dias,
+    plazoDias: plazoInstrumento,
   };
   // origen 'proactiva' (Ángela sola) → el policy engine exige OK del dueño siempre
   const pol = evaluarPolicy('generarInstrumento', inputInstrumento, { proactiva: origen === 'proactiva' });

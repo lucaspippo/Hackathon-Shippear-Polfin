@@ -5,24 +5,51 @@ import express from 'express';
 import cors from 'cors';
 import { existsSync } from 'node:fs';
 import { openDb, createSchema, DB_PATH } from './db.js';
+import { sembrar } from './seed.js';
 import { calcularScore } from './scoring.js';
 import { evaluarCredito, conversar, aprobarSolicitud, rechazarSolicitud } from './agente/agente.js';
+import { chatAngela } from './agente/chatAngela.js';
+import { contextoMacroPublico } from './macro.js';
+import { generarInsights } from './agente/insights.js';
 import { ciclarMonitoreo, arrancarMonitor } from './agente/agenteProactivo.js';
 import { POLICY } from './agente/policy.js';
 
-// Variable propia (no el PORT genérico) para no chocar con el frontend
-// cuando un runner inyecta PORT en el entorno compartido.
-const PORT = process.env.POLFIN_API_PORT || 4000;
+// Puerto: en Render (y cualquier PaaS) manda process.env.PORT. En local usamos
+// POLFIN_API_PORT (para no chocar con el 3000 del front). Default 4000.
+const PORT = process.env.PORT || process.env.POLFIN_API_PORT || 4000;
 
-if (!existsSync(DB_PATH)) {
-  console.error('No existe la DB. Corré primero: npm run seed');
-  process.exit(1);
+// AUTO-SEED EN ARRANQUE (producción con disco efímero): si la DB no existe o
+// está vacía, se siembra el dataset reproducible ANTES de servir requests. Así
+// el backend en Render siempre levanta con los 1.288 registros y los perfiles
+// diseñados, aunque el disco se haya borrado en el deploy. El seed local
+// (`npm run seed`) sigue igual: reproducible y desde cero.
+function dbEstaVacia() {
+  try {
+    const probe = openDb();
+    const n = probe.prepare('SELECT COUNT(*) AS n FROM entidades').get().n;
+    probe.close();
+    return n === 0;
+  } catch {
+    return true; // sin tabla/DB corrupta → tratar como vacía
+  }
 }
+if (!existsSync(DB_PATH) || dbEstaVacia()) {
+  console.log('[startup] DB ausente o vacía — sembrando dataset reproducible…');
+  sembrar();
+  console.log('[startup] seed completo.');
+}
+
 const db = openDb();
 createSchema(db);
 
 const app = express();
-app.use(cors());
+// CORS: aceptamos el origen del frontend. FRONTEND_URL (coma-separado) lo acota
+// en producción; sin setear, se refleja cualquier origen (útil para *.onrender.com
+// y pruebas). Nunca usamos credenciales/cookies, así que reflejar es seguro.
+const origenesCors = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map((s) => s.trim())
+  : true;
+app.use(cors({ origin: origenesCors }));
 app.use(express.json());
 
 // Columnas de pago derivadas de la tabla `pagos`, para que TODA la app cuadre:
@@ -239,6 +266,13 @@ app.get('/api/macro', (_req, res) => {
   res.json(db.prepare('SELECT * FROM macro_referencia ORDER BY mes').all());
 });
 
+// Contexto macro REAL (contexto_macro.json): indicadores + política + lectura +
+// reglas activas + regla de neutralidad. Lo consume la UI para mostrar que el
+// plazo/tasa consideran el contexto del país.
+app.get('/api/macro/contexto', (_req, res) => {
+  res.json(contextoMacroPublico());
+});
+
 // EL endpoint de verificación: totales + comportamiento de pago por deudor.
 // Acá se ve si los datos sostienen la narrativa (estrella/thin/moroso) SIN scoring.
 app.get('/api/resumen', (_req, res) => {
@@ -287,12 +321,13 @@ app.get('/api/resumen', (_req, res) => {
 // Es lo que usa la UI. body: { deudor_id, acreedor_id, monto, contexto? }
 app.post('/api/agente/evaluar-credito', async (req, res) => {
   try {
-    const { deudor_id, acreedor_id, monto, contexto } = req.body || {};
+    const { deudor_id, acreedor_id, monto, contexto, plazo_dias } = req.body || {};
     const resultado = await evaluarCredito(db, {
       deudorId: Number(deudor_id),
       acreedorId: Number(acreedor_id),
       monto: Number(monto),
       contexto,
+      plazoPreferido: plazo_dias ? Number(plazo_dias) : null,
     });
     res.json(resultado);
   } catch (e) {
@@ -305,6 +340,30 @@ app.post('/api/agente/evaluar-credito', async (req, res) => {
 app.post('/api/agente/conversar', async (req, res) => {
   try {
     res.json(await conversar(db, { texto: req.body?.texto }));
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
+});
+
+// CHAT ABIERTO (el uso de IA central): el dueño pregunta cualquier cosa sobre su
+// negocio en lenguaje natural y Ángela razona sobre los datos reales, eligiendo y
+// encadenando tools de SOLO LECTURA. Es de consulta/análisis: NO ejecuta acciones
+// que muevan dinero (eso va por el flujo formal con approval gate).
+// body: { pregunta, entidadId, rol?, nombre?, historial?: [{role, content}] }
+app.post('/api/agente/chat', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const pregunta = (b.pregunta ?? b.texto ?? '').toString();
+    if (!pregunta.trim()) return res.status(400).json({ error: 'falta la pregunta' });
+    const entId = Number(b.entidadId ?? b.entidad_id);
+    const ent = Number.isFinite(entId) ? db.prepare('SELECT nombre FROM entidades WHERE id = ?').get(entId) : null;
+    res.json(await chatAngela(db, {
+      pregunta,
+      entidadActivaId: Number.isFinite(entId) ? entId : null,
+      entidadNombre: ent?.nombre ?? b.nombre ?? null,
+      rol: b.rol ?? null,
+      historial: Array.isArray(b.historial) ? b.historial : [],
+    }));
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }
@@ -323,6 +382,20 @@ app.post('/api/agente/monitorear', async (req, res) => {
 // Detecciones activas del monitor (alimentan el feed)
 app.get('/api/agente/detecciones', (_req, res) => {
   res.json(db.prepare("SELECT * FROM detecciones WHERE estado = 'activa' ORDER BY id DESC").all());
+});
+
+// INSIGHTS PROACTIVOS (AI-native): Ángela lee la red del vendedor activo y
+// genera tarjetas de early-warning priorizadas (cambio de comportamiento,
+// concentración, oportunidad, anomalía, cobros). Se computan en vivo.
+// query: ?entidadId=ID (el vendedor activo)
+app.get('/api/agente/insights', (req, res) => {
+  try {
+    const entId = Number(req.query.entidadId);
+    if (!Number.isFinite(entId)) return res.status(400).json({ error: 'falta entidadId' });
+    res.json(generarInsights(db, entId));
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
 });
 
 // Config del policy engine (para mostrar en la UI del agente)

@@ -15,7 +15,7 @@ export function Decisiones({
 }) {
   const [abierta, setAbierta] = useState<number | null>(null);
   const [ocupada, setOcupada] = useState<number | null>(null);
-  const esConsumidor = rol.id === "consumidor";
+  const esConsumidor = false; // el consumidor final ya no es usuario de la app
 
   const lista = esConsumidor
     ? solicitudes.filter((s) => s.deudor_id === rol.entidadId)

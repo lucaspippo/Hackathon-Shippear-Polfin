@@ -3,10 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
-    "dev": "node src/server.js",
-    "seed": "node src/seed.js",
-    "scores": "node src/scores-report.js"
+    "start": "node src/server.js",
+    "dev": "node --env-file-if-exists=.env src/server.js",
+    "seed": "node --env-file-if-exists=.env src/seed.js",
+    "scores": "node --env-file-if-exists=.env src/scores-report.js",
+    "verificar:gateway": "node --env-file-if-exists=.env src/verificar-gateway.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

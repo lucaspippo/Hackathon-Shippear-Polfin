@@ -32,6 +32,21 @@ export function useEsMobile(bp = 1023) {
   return mobile;
 }
 
+// Estado booleano persistido en localStorage (colapsos de sidebar/chat, etc).
+// Hidrata post-mount para no romper el SSR con un mismatch de contenido.
+export function usePersistente(clave: string, porDefecto: boolean) {
+  const [valor, setValor] = useState(porDefecto);
+  useEffect(() => {
+    const guardado = window.localStorage.getItem(clave);
+    if (guardado !== null) setValor(guardado === "1");
+  }, [clave]);
+  const set = (v: boolean) => {
+    setValor(v);
+    window.localStorage.setItem(clave, v ? "1" : "0");
+  };
+  return [valor, set] as const;
+}
+
 export function useMedida<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [medida, setMedida] = useState({ w: 0, h: 0 });

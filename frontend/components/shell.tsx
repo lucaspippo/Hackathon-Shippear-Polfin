@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import { apiPost, type Auditoria, type Solicitud } from "@/lib/api";
 import { ROLES, rolPorId, type RolId, type Vista } from "@/lib/roles";
-import { useApi, useEsMobile } from "@/components/ui";
+import { useApi, useEsMobile, usePersistente } from "@/components/ui";
 import { Sidebar } from "@/components/sidebar";
 import { Feed } from "@/components/feed";
 import { Angela } from "@/components/angela";
@@ -16,7 +16,7 @@ import { Pagos } from "@/components/pagos";
 import { Cartera } from "@/components/cartera";
 import { Alertas } from "@/components/alertas";
 import { Mapa } from "@/components/mapa";
-import { MisCompras } from "@/components/misCompras";
+import { NuevaVenta } from "@/components/nuevaVenta";
 import { Documento, type DocRef } from "@/components/documento";
 
 export type ResultadoAgente = {
@@ -26,7 +26,7 @@ export type ResultadoAgente = {
 } | null;
 
 export function Shell() {
-  const [rolId, setRolId] = useState<RolId>("comercio");
+  const [rolId, setRolId] = useState<RolId>("minorista");
   const [vista, setVista] = useState<Vista>("inicio");
   const [foco, setFoco] = useState<number | null>(null);
   const [refresh, setRefresh] = useState(0);
@@ -38,10 +38,14 @@ export function Shell() {
   const [doc, setDoc] = useState<DocRef | null>(null);    // documento abierto
   const esMobile = useEsMobile();
 
+  // paneles colapsables (navbar a rail de íconos, chat a franja oculta)
+  const [sidebarColapsado, setSidebarColapsado] = usePersistente("polfin.sidebarColapsado", false);
+  const [angelaColapsado, setAngelaColapsado] = usePersistente("polfin.angelaColapsado", false);
+
   const rol = rolPorId(rolId);
   const focal = foco ?? rol.entidadId;
-  // El Cerebro es análisis de pantalla grande: el consumidor no lo ve en mobile.
-  const ocultarCerebro = esMobile && rol.id === "consumidor";
+  const ocultarCerebro = false; // todos los roles (eslabones) ven el Cerebro
+  const [ventaAbierta, setVentaAbierta] = useState(false); // modal "Nueva venta a plazo"
 
   const { data: solicitudes } = useApi<Solicitud[]>("/api/solicitudes", [refresh]);
   const { data: auditoria } = useApi<Auditoria[]>("/api/agente/auditoria?limit=60", [refresh]);
@@ -63,8 +67,7 @@ export function Shell() {
     setResultado(null);
     setSelectorAbierto(false);
     setMenuAbierto(false);
-    // al entrar como consumidor, aterrizar en su hub
-    setVista(id === "consumidor" ? "compras" : "inicio");
+    setVista("inicio");
   };
 
   const irA = useCallback((v: Vista, focoNuevo?: number) => {
@@ -178,6 +181,8 @@ export function Shell() {
           rol={rol} vista={vista} irA={irA} ocultarCerebro={ocultarCerebro}
           pendientes={pendientesMias.length || pendientes.length}
           esperandoOk={pendientesMias.length > 0 || pendientes.length > 0}
+          colapsado={sidebarColapsado}
+          onToggle={() => setSidebarColapsado(!sidebarColapsado)}
         />
       </div>
 
@@ -219,6 +224,13 @@ export function Shell() {
               onKeyDown={(e) => e.key === "Enter" && correrAgente()} />
           </div>
           <div className="flex-1 lg:hidden" />
+          {/* Nueva venta a plazo: el vendedor genera el documento para entregar */}
+          <button onClick={() => setVentaAbierta(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-3 py-2 text-[12.5px] font-semibold text-black transition-transform hover:scale-[1.02] sm:px-4">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+            <span className="hidden sm:inline">Nueva venta a plazo</span>
+            <span className="sm:hidden">Vender</span>
+          </button>
           {selectorRol}
         </header>
 
@@ -255,9 +267,6 @@ export function Shell() {
           {vista === "pagos" && <Pagos rol={rol} refresh={refresh} recargar={recargar} abrirDoc={abrirDoc} />}
           {vista === "cartera" && <Cartera rol={rol} irA={irA} refresh={refresh} />}
           {vista === "mapa" && <Mapa rol={rol} irA={irA} />}
-          {vista === "compras" && (
-            <MisCompras rol={rol} refresh={refresh} irA={irA} abrirDoc={abrirDoc} />
-          )}
         </main>
       </div>
 
@@ -268,8 +277,23 @@ export function Shell() {
           evaluando={evaluando} resultado={resultado}
           correrAgente={correrAgente} irA={irA}
           vigilarAhora={vigilarAhora} vigilando={vigilando}
+          colapsado={angelaColapsado}
+          onToggle={() => setAngelaColapsado(!angelaColapsado)}
         />
       </div>
+
+      {/* Nueva venta a plazo: genera el e-pagaré para entregar al cliente */}
+      {ventaAbierta && (
+        <NuevaVenta
+          rol={rol} irA={irA}
+          onCerrar={() => setVentaAbierta(false)}
+          onGenerado={(instrumentoId) => {
+            setVentaAbierta(false);
+            setDoc({ tipo: "epagare", id: instrumentoId });
+            recargar();
+          }}
+        />
+      )}
 
       {/* documentos (e-pagaré / comprobante) sobre cualquier vista */}
       {doc && <Documento doc={doc} onCerrar={() => setDoc(null)} onAceptar={aceptarInstrumento} />}

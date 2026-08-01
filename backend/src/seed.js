@@ -277,7 +277,7 @@ function generarTx({ acreedorId, deudorId, fechaEmision, plazo, monto, concepto,
   };
 }
 
-function main() {
+export function sembrar() {
   if (existsSync(DB_PATH)) rmSync(DB_PATH);
   ['-journal', '-wal', '-shm'].forEach((s) => { if (existsSync(DB_PATH + s)) rmSync(DB_PATH + s); });
   const db = openDb();
@@ -525,4 +525,8 @@ function main() {
   db.close();
 }
 
-main();
+// Ejecutado directo (`npm run seed`) siembra SIEMPRE desde cero. Importado por
+// el server (auto-seed en arranque), NO se auto-ejecuta: el server decide.
+if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('/seed.js')) {
+  sembrar();
+}

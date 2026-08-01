@@ -13,7 +13,7 @@ export function Alertas({
 }: { rol: Rol; irA: (v: Vista, foco?: number) => void; refresh: number }) {
   const { data: det } = useApi<EntidadDetalle>(`/api/entidades/${rol.entidadId}`, [refresh]);
   const { data: scores } = useApi<ScoreResumen[]>("/api/scores", [refresh]);
-  const esConsumidor = rol.id === "consumidor";
+  const esConsumidor = false; // el consumidor final ya no es usuario de la app
 
   const vencidas = useMemo(
     () => (det?.como_acreedor ?? []).filter((t) => t.estado === "vencida")

@@ -21,6 +21,8 @@
 //    lo último pesa más que lo viejo.
 // ============================================================================
 
+import { evaluarPoliticaMacro, notaMacroNatural } from './macro.js';
+
 export const PESOS = {
   puntualidad: 0.35,
   historial: 0.15,
@@ -71,13 +73,17 @@ export function calcularScore(db, entidadId, hoy = new Date()) {
     "SELECT * FROM macro_referencia ORDER BY mes DESC LIMIT 1"
   ).get() ?? { tasa_referencia_tna: 29, mes: "s/d" };
 
+  // Contexto macro: ajusta plazo/tasa (NUNCA el score) según el sector del
+  // deudor y los indicadores del país. Determinístico y auditable.
+  const ajusteMacro = evaluarPoliticaMacro({ rubro: ent.rubro, tipo: ent.tipo });
+
   if (txs.length === 0) {
     return {
       entidad: { id: ent.id, nombre: ent.nombre, tipo: ent.tipo },
       score: null,
       explicacion: `${ent.nombre} no tiene historial verificable como deudor en la red. Sin operaciones registradas no hay score: PolFin solo puntúa comportamiento comprobable.`,
       desglose: [],
-      condiciones: condicionesPara(null, macro, null),
+      condiciones: condicionesPara(null, macro, null, ajusteMacro),
       metricas: { operaciones: 0 },
     };
   }
@@ -205,7 +211,7 @@ export function calcularScore(db, entidadId, hoy = new Date()) {
     },
   ];
 
-  const condiciones = condicionesPara(score, macro, medianaMonto);
+  const condiciones = condicionesPara(score, macro, medianaMonto, ajusteMacro);
   const explicacion = armarExplicacion({
     ent, score, condiciones, cerradas, pagadas, vencidas, puntuales,
     pctPuntual, atrasoProm, comerciosBuenos, mesesAntiguedad, montoPagado, tendenciaLabel,
@@ -247,18 +253,45 @@ const BANDAS = [
   { min: 0,   riesgo: "muy alto",  recargo_pp: null, plazo_max_dias: 0,  limite: "sin crédito", mult: 0 },
 ];
 
-export function condicionesPara(score, macro, medianaMonto) {
+// `ajuste` (de macro.evaluarPoliticaMacro) mueve PLAZO y SPREAD según el contexto
+// del país — NUNCA el score ni el riesgo, que ya salieron de la fórmula. La tasa
+// base pasa a ser la referencia de mercado del contexto (TAMAR); el plazo por
+// riesgo (banda) se topea al techo que habilita el contexto macro.
+export function condicionesPara(score, macro, medianaMonto, ajuste = null) {
+  const usaMacro = !!ajuste?.disponible;
+  const tasaBase = usaMacro ? ajuste.tasa_base_tna : macro.tasa_referencia_tna;
+  const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  // Techo de plazo que el CONTEXTO habilita hoy (plazo base ± ajuste macro).
+  const techoPlazoMacro = usaMacro
+    ? clamp(ajuste.plazo_base_dias + ajuste.plazo_delta_dias, 15, ajuste.plazo_extensible_dias)
+    : Infinity;
+
+  const macroSub = usaMacro ? {
+    aplicado: true,
+    tasa_base_tna: tasaBase,
+    spread_delta_pp: ajuste.spread_delta_pp,
+    plazo_delta_dias: ajuste.plazo_delta_dias,
+    techo_plazo_contexto_dias: techoPlazoMacro === Infinity ? null : techoPlazoMacro,
+    sector: ajuste.sector,
+    sesgo: ajuste.sesgo,
+    reglas_activas: ajuste.reglas_activas,
+    indicadores: ajuste.indicadores,
+    nota: notaMacroNatural(ajuste),
+  } : { aplicado: false };
+
   if (score === null) {
     return {
       riesgo: "sin datos",
       decision: "sin historial verificable: pedir garantía o arrancar con contado/montos mínimos",
-      tasa_base_tna: macro.tasa_referencia_tna,
+      tasa_base_tna: tasaBase,
       tasa_sugerida_tna: null,
       recargo_pp: null,
       plazo_max_dias: 0,
+      plazo_por_riesgo_dias: 0,
       limite_categoria: "sin crédito",
       limite_sugerido_pesos: 0,
       macro_mes: macro.mes,
+      macro: macroSub,
     };
   }
   const b = BANDAS.find((x) => score >= x.min);
@@ -266,18 +299,26 @@ export function condicionesPara(score, macro, medianaMonto) {
   const limitePesos = rechazo || !medianaMonto
     ? 0
     : Math.round((b.mult * medianaMonto) / 1000) * 1000;
+  // Plazo por riesgo (banda) topeado por lo que el contexto habilita.
+  const plazoFinal = rechazo ? 0 : Math.min(b.plazo_max_dias, techoPlazoMacro);
+  // Spread por riesgo (banda) + ajuste de contexto, nunca por debajo de la base.
+  const spreadRiesgo = rechazo ? null : Math.max(0, b.recargo_pp + (usaMacro ? ajuste.spread_delta_pp : 0));
+  const tasaSugerida = rechazo ? null : +(tasaBase + spreadRiesgo).toFixed(1);
   return {
     riesgo: b.riesgo,
     decision: rechazo
       ? "rechazar el crédito u operar solo de contado"
-      : `fiar hasta ${pesosAr(limitePesos)} a ${b.plazo_max_dias} días máximo`,
-    tasa_base_tna: macro.tasa_referencia_tna,
-    tasa_sugerida_tna: rechazo ? null : +(macro.tasa_referencia_tna + b.recargo_pp).toFixed(1),
-    recargo_pp: b.recargo_pp,
-    plazo_max_dias: b.plazo_max_dias,
+      : `fiar hasta ${pesosAr(limitePesos)} a ${plazoFinal} días máximo`,
+    tasa_base_tna: tasaBase,
+    tasa_sugerida_tna: tasaSugerida,
+    recargo_pp: rechazo ? null : spreadRiesgo,
+    recargo_riesgo_pp: b.recargo_pp,          // spread puro por score (sin contexto)
+    plazo_max_dias: plazoFinal,               // el plazo efectivo (riesgo topeado por contexto)
+    plazo_por_riesgo_dias: b.plazo_max_dias,  // el que daría el score sin contexto
     limite_categoria: b.limite,
     limite_sugerido_pesos: limitePesos,
     macro_mes: macro.mes,
+    macro: macroSub,
   };
 }
 

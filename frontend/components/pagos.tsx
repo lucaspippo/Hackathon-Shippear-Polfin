@@ -115,7 +115,7 @@ export function Pagos({
   const { data: porCobrar } = useApi<Tx[]>(`/api/pagos/por-cobrar/${rol.entidadId}`, dep);
   const { data: porPagar } = useApi<Tx[]>(`/api/pagos/por-pagar/${rol.entidadId}`, dep);
   const [ultimo, setUltimo] = useState<{ comprobante: string; monto: number; saldada: boolean } | null>(null);
-  const esConsumidor = rol.id === "consumidor";
+  const esConsumidor = false; // el consumidor final ya no es usuario de la app
 
   const registrarPago = async (txId: number, monto: number) => {
     const r = await apiPost<{ comprobante: string; monto: number; saldada: boolean }>("/api/pagos", {
