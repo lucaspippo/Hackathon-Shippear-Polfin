@@ -32,7 +32,7 @@ export function Cartera({
 }: { rol: Rol; irA: (v: Vista, foco?: number) => void; refresh: number }) {
   const { data: det } = useApi<EntidadDetalle>(`/api/entidades/${rol.entidadId}`, [refresh]);
   const { data: score } = useApi<Score>(`/api/score/${rol.entidadId}`, [refresh]);
-  const esConsumidor = rol.id === "consumidor";
+  const esConsumidor = false; // el consumidor final ya no es usuario de la app
 
   const resumen = useMemo(() => {
     if (!det) return null;

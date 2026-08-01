@@ -107,6 +107,18 @@ function EPagare({ id, onAceptar }: { id: number; onAceptar?: (id: number) => vo
             )}
           </div>
         </div>
+
+        {/* entregar el documento — el deudor (incl. consumidor final) no entra a
+            la app: el vendedor lo descarga/imprime y se lo pasa por fuera. */}
+        <div className="mt-5 flex flex-col gap-2 rounded-xl border border-linea bg-carta/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[11.5px] leading-snug text-tenue">
+            Entregáselo a tu cliente (impreso o por WhatsApp). No necesita entrar a PolFin.
+          </p>
+          <button onClick={() => window.print()}
+            className="shrink-0 rounded-full border border-brand/50 px-3.5 py-1.5 text-[12.5px] font-semibold text-brand transition-colors hover:bg-brand/10">
+            Descargar / Imprimir
+          </button>
+        </div>
       </div>
     </>
   );

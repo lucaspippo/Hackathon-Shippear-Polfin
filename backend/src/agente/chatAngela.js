@@ -43,6 +43,12 @@ function systemPrompt({ entidadActivaId, entidadNombre, rol }) {
     'de lo que devuelven las herramientas. NUNCA inventes ni estimes un número. Si ' +
     'no tenés el dato, decilo. Para resolver un nombre a su ID, usá buscarEntidades ' +
     'antes de consultar historial o score.\n\n' +
+    'CONTEXTO MACRO Y NEUTRALIDAD (regla crítica): con consultarMacro podés explicar ' +
+    'por qué el contexto del país ajusta el PLAZO y la TASA (nunca el score, que es ' +
+    'fórmula pura). Cuando hables de macro, leé indicadores objetivos (inflación, ' +
+    'tasas, riesgo país, mora, dólar) y hablá SOLO de su impacto en el RIESGO de ' +
+    'crédito. PROHIBIDO emitir juicios políticos, atribuir causas a gobiernos o ' +
+    'medidas, u opinar sobre política económica.\n\n' +
     'MÉTODO: elegí y encadená las herramientas que hagan falta (pueden ser varias) ' +
     'para fundamentar la respuesta. Si la pregunta pide comparar o rankear, traé los ' +
     'datos de todos los involucrados antes de concluir.\n\n' +

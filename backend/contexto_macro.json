@@ -1,0 +1,296 @@
+{
+  "_meta": {
+    "descripcion": "Contexto macroeconómico de Argentina para el motor de decisión de crédito comercial de PolFin. Ángela consulta estos indicadores para ajustar plazo y tasa recomendados segun el contexto del país, de forma NEUTRAL: lee indicadores objetivos y habla de riesgo, nunca de política.",
+    "fecha_corte": "2026-08-01",
+    "moneda": "ARS",
+    "regla_de_uso": "Estos valores ajustan la POLÍTICA de crédito (plazo y spread sobre la tasa base), NUNCA el score del cliente, que se calcula por la fórmula determinística. El cliente bueno sigue siendo bueno; lo que cambia es cuánto conviene exponerse dado el contexto del país.",
+    "neutralidad": "Prohibido emitir juicios políticos, atribuir causas a gobiernos o medidas, u opinar sobre política económica. Solo se interpretan indicadores y su impacto en el riesgo de crédito."
+  },
+
+  "inflacion": {
+    "ipc_mensual": {
+      "valor_pct": 1.9,
+      "periodo": "2026-06",
+      "tipo": "observado",
+      "fuente": "INDEC",
+      "tendencia": "descendente",
+      "nota": "Registro más bajo desde agosto 2025. Secuencia reciente: abril 2.6, mayo 2.1, junio 1.9.",
+      "url": "https://www.indec.gob.ar"
+    },
+    "ipc_interanual": {
+      "valor_pct": 33.5,
+      "periodo": "2026-06",
+      "tipo": "observado",
+      "fuente": "INDEC",
+      "tendencia": "descendente"
+    },
+    "ipc_acumulado_anual": {
+      "valor_pct": 16.8,
+      "periodo": "2026-H1",
+      "tipo": "observado",
+      "fuente": "INDEC"
+    },
+    "ipc_nucleo_mensual": {
+      "valor_pct": 1.6,
+      "periodo": "2026-06",
+      "tipo": "observado",
+      "fuente": "INDEC",
+      "nota": "Nivel más bajo desde julio 2025."
+    },
+    "inflacion_esperada_12m": {
+      "valor_pct": 22.3,
+      "tipo": "proyeccion",
+      "fuente": "REM BCRA (junio 2026, 44 participantes)",
+      "url": "https://www.bcra.gob.ar/publicaciones/relevamiento-de-expectativas-de-mercado-rem-junio-2026/"
+    },
+    "inflacion_esperada_fin_2026": {
+      "valor_pct": 30.0,
+      "tipo": "proyeccion",
+      "fuente": "REM BCRA (junio 2026)"
+    },
+    "sendero_mensual_proyectado": {
+      "detalle": "2.0 (jul), 1.8 (ago-sep), 1.7 (oct-nov), 1.8 (dic)",
+      "tipo": "proyeccion",
+      "fuente": "REM BCRA (junio 2026)"
+    }
+  },
+
+  "tipo_de_cambio": {
+    "regimen": {
+      "descripcion": "Bandas de flotación; el BCRA interviene comprando en el piso y vendiendo en el techo. Límites de banda se actualizan según el último dato de inflación.",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "url": "https://www.bcra.gob.ar"
+    },
+    "dolar_mayorista": {
+      "valor": 1490,
+      "fecha": "2026-07-30",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "tendencia": "estable",
+      "nota": "Acumuló +2.3% en 2026, muy por debajo de la inflación (apreciación real). Lejos del techo de la banda (~20-23% de distancia)."
+    },
+    "dolar_minorista_venta": {
+      "valor": 1510,
+      "fecha": "2026-07-31",
+      "tipo": "observado",
+      "fuente": "Banco Nación"
+    },
+    "dolar_mep": {
+      "valor": 1517,
+      "fecha": "2026-07-31",
+      "tipo": "observado",
+      "fuente": "mercado",
+      "brecha_pct": 1.8
+    },
+    "dolar_ccl": {
+      "valor": 1570,
+      "fecha": "2026-07-31",
+      "tipo": "observado",
+      "fuente": "mercado",
+      "brecha_pct": 5.5
+    },
+    "techo_banda_aprox": {
+      "valor": 1820,
+      "fecha": "2026-07",
+      "tipo": "referencia",
+      "fuente": "BCRA"
+    },
+    "volatilidad": "baja"
+  },
+
+  "tasas_interes": {
+    "marco": {
+      "descripcion": "El BCRA opera bajo control de agregados monetarios (fase de re-monetización 2026); NO fija una tasa de política monetaria tradicional. Las tasas se determinan por oferta y demanda de liquidez. Usar TAMAR/BADLAR como referencias de mercado.",
+      "fuente": "BCRA"
+    },
+    "tamar_mayorista_tna": {
+      "valor_pct": 22.4,
+      "fecha": "2026-07-29",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "tendencia": "descendente",
+      "nota": "Bajó desde ~30% a inicios de 2026. Es la referencia base sugerida para pricing de crédito comercial."
+    },
+    "badlar_privados_tna": {
+      "valor_pct": 21.25,
+      "fecha": "2026-07-29",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "tendencia": "descendente"
+    },
+    "adelantos_cuenta_corriente_tna": {
+      "valor_pct": 25.0,
+      "fecha": "2026-07-29",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "tendencia": "descendente",
+      "nota": "Bajaron desde ~57% a inicios de año."
+    },
+    "descuento_cheques_pyme_tna": {
+      "valor_pct": 27.9,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "tendencia": "descendente",
+      "nota": "Referencia de techo para operaciones de crédito comercial a 30-90 días."
+    },
+    "ifp_mercado_capitales_tna": {
+      "valor_pct": 25.33,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "MAV / Índice de Financiamiento Pyme",
+      "tendencia": "descendente",
+      "nota": "Bajó 14.82 p.p. interanual desde 40.15% en mayo 2025."
+    },
+    "plazo_fijo_minorista_30d_tna": {
+      "valor_pct": 20.4,
+      "periodo": "2026-07",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "nota": "Promedio del sistema; rango 19-23% según banco."
+    }
+  },
+
+  "actividad_economica": {
+    "emae_interanual": {
+      "valor_pct": 0.2,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "INDEC",
+      "url": "https://www.indec.gob.ar"
+    },
+    "emae_mensual_desestacionalizado": {
+      "valor_pct": -0.5,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "INDEC",
+      "tendencia": "estancada"
+    },
+    "pbi_proyeccion_2026": {
+      "valor_pct": 3.5,
+      "tipo": "proyeccion",
+      "fuente": "FMI (WEO julio 2026)",
+      "otras_fuentes": "REM 3.0, Moody's 3.4"
+    },
+    "sectores": {
+      "dinamicos_menor_riesgo": ["mineria", "energia", "agro"],
+      "en_contraccion_mayor_riesgo": ["industria", "comercio", "construccion", "pesca"],
+      "nota": "Minería +15.7%, energía +8%, agro +4.6% (crecen). Industria -5.6%, comercio -4.3% (caen). Ponderar el sector del deudor en el análisis de riesgo.",
+      "periodo": "2026-05",
+      "fuente": "INDEC"
+    }
+  },
+
+  "riesgo_credito": {
+    "mora_sector_privado_pct": {
+      "valor_pct": 7.7,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "BCRA - Informe sobre Bancos",
+      "tendencia": "en alza, posible techo",
+      "nota": "Cobertura de previsiones 86.3% de cartera irregular. Fuentes del sistema estiman que tocó techo en el 2do trimestre.",
+      "url": "https://www.bcra.gob.ar/publicaciones/informe-sobre-bancos-mayo-de-2026/"
+    },
+    "mora_familias_pct": {
+      "valor_pct": 12.8,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "nota": "Máximo en más de 20 años."
+    },
+    "mora_empresas_pct": {
+      "valor_pct": 3.5,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "BCRA"
+    },
+    "cheques_rechazados": {
+      "cantidad": 99431,
+      "periodo": "2026-05",
+      "tipo": "observado",
+      "fuente": "BCRA - Central de Cheques",
+      "tendencia": "en baja tras pico, pero +43.4% interanual",
+      "nota": "Indicador adelantado de estrés de la cadena de pagos entre empresas.",
+      "url": "https://www.bcra.gob.ar/cheques/actualiza.asp"
+    },
+    "credito_privado_sobre_pbi_pct": {
+      "valor_pct": 15,
+      "periodo": "2026",
+      "tipo": "observado",
+      "fuente": "Deloitte (via Infobae)",
+      "nota": "Muy bajo vs. región (México 35, Brasil 76, Chile 104). Refuerza el espacio vacío que PolFin ataca."
+    }
+  },
+
+  "riesgo_pais_financiero": {
+    "riesgo_pais_embi_pb": {
+      "valor": 410,
+      "fecha": "2026-07-22",
+      "tipo": "observado",
+      "fuente": "JP Morgan / EMBI+",
+      "tendencia": "descendente",
+      "nota": "Mínimos de varios años; osciló cerca de perforar los 400 pb."
+    },
+    "calificacion_moodys": {
+      "valor": "B3",
+      "perspectiva": "positiva",
+      "fecha": "2026-07-21",
+      "tipo": "observado",
+      "fuente": "Moody's",
+      "nota": "Tercer upgrade en tres meses (Fitch, S&P, Moody's alineadas en B-)."
+    },
+    "reservas_brutas_bcra_musd": {
+      "valor": 47596,
+      "fecha": "2026-07-31",
+      "tipo": "observado",
+      "fuente": "BCRA",
+      "nota": "Compras netas de ~13.327 MUSD en 2026, superando la meta anual mínima."
+    }
+  },
+
+  "politica_credito_comercial": {
+    "plazo_base_dias": 60,
+    "plazo_extensible_dias": 90,
+    "tasa_base_referencia": "TAMAR (~22.4% TNA) + spread por riesgo del deudor",
+    "techo_tasa_referencia": "descuento de cheques PyME (~27.9% TNA)",
+    "plazos_tipicos": [30, 60, 90],
+    "nota_plazos": "Con la desinflación de 2026 hay margen para plazos más largos, pero la actividad estancada y la mora elevada operan en sentido contrario. En 2026 muchas empresas estiraron plazos de 30 a 60-90 días.",
+
+    "reglas_ajuste_dinamico": [
+      {
+        "condicion": "inflacion_mensual > 2.5%",
+        "accion": "acortar plazos (30-45 días) y subir spread por mayor licuación"
+      },
+      {
+        "condicion": "inflacion_mensual < 1.5% sostenida",
+        "accion": "habilitar plazos de 90-120 días"
+      },
+      {
+        "condicion": "riesgo_pais > 600 pb o dolar_oficial a menos de 5% del techo de banda",
+        "accion": "endurecer crédito: acortar plazos, subir spread"
+      },
+      {
+        "condicion": "mora_sector_privado > 9%",
+        "accion": "aumentar previsiones internas y acortar plazos"
+      },
+      {
+        "condicion": "inflacion_interanual < 20%",
+        "accion": "migrar a tasas reales positivas estables y plazos estructuralmente más largos"
+      },
+      {
+        "condicion": "sector del deudor en contracción (industria/comercio/construcción)",
+        "accion": "mayor cautela: plazo más corto o spread más alto"
+      },
+      {
+        "condicion": "sector del deudor dinámico (agro/energía/minería)",
+        "accion": "mayor apertura: plazo extensible, spread menor"
+      }
+    ],
+
+    "lectura_actual": {
+      "resumen": "Contexto de desinflación consolidada y estabilidad cambiaria, favorable para extender crédito comercial con plazos competitivos (60-90 días para buenos deudores). Cautela por morosidad elevada y actividad estancada. Análisis diferenciado por sector.",
+      "sesgo": "moderadamente expansivo con cautela por riesgo de cadena de pagos"
+    }
+  }
+}

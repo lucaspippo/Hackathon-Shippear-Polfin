@@ -1,7 +1,11 @@
 // El selector de rol de la demo: UN usuario que cambia su lugar en la cadena.
-// Cada rol se ancla a una entidad REAL del dataset — el feed, el cerebro y la
-// cartera se re-parametrizan con su id. Sin auth: el selector ES el login.
-export type RolId = "fabrica" | "distribuidora" | "comercio" | "consumidor";
+// DECISIÓN DE PRODUCTO: el consumidor final YA NO es un usuario de la app (no lo
+// obligamos a usar PolFin). Los roles son los eslabones que compran Y venden:
+// Fábrica, Distribuidora, Mayorista, Minorista. El consumidor final sigue
+// existiendo como ENTIDAD en los datos (se le fía, tiene score, aparece en el
+// cerebro y en las cuentas) — lo que se elimina es su login/vista propia. Para
+// venderle, el vendedor genera el documento y se lo entrega por fuera de la app.
+export type RolId = "fabrica" | "distribuidora" | "mayorista" | "minorista";
 
 export type Rol = {
   id: RolId;
@@ -40,27 +44,29 @@ export const ROLES: Rol[] = [
     },
   },
   {
-    id: "comercio",
-    etiqueta: "Comercio",
+    id: "mayorista",
+    etiqueta: "Mayorista",
+    entidadId: 7,
+    entidadNombre: "Corralón Materiales Ovidio Lagos",
+    persona: "Aldo",
+    saludo: "Tus clientes a plazo, con el riesgo a la vista",
+    // Venta a plazo a un consumidor final (Marcela): el vendedor genera y entrega
+    // el documento; el comprador no entra a la app.
+    accion: {
+      texto: "Nueva venta a plazo: Marcela Benítez, $180.000 a plazo",
+      deudorId: 14, acreedorId: 7, monto: 180_000,
+    },
+  },
+  {
+    id: "minorista",
+    etiqueta: "Minorista",
     entidadId: 9,
     entidadNombre: "Almacén Doña Marta",
     persona: "Marta",
     saludo: "Tu fiado, sin libreta y sin sustos",
     accion: {
-      texto: "Evaluá: Rubén Alcaraz pide $120.000 de fiado",
+      texto: "Nueva venta a plazo: Rubén Alcaraz pide $120.000 de fiado",
       deudorId: 16, acreedorId: 9, monto: 120_000,
-    },
-  },
-  {
-    id: "consumidor",
-    etiqueta: "Consumidor final",
-    entidadId: 14,
-    entidadNombre: "Marcela Benítez",
-    persona: "Marcela",
-    saludo: "Tu reputación te abre puertas",
-    accion: {
-      texto: "Presentá tu score en el Corralón Ovidio Lagos ($180.000)",
-      deudorId: 14, acreedorId: 7, monto: 180_000,
     },
   },
 ];

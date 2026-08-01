@@ -25,7 +25,7 @@ export function Sidebar({
   rol: Rol; vista: Vista; irA: (v: Vista) => void;
   pendientes: number; esperandoOk: boolean; ocultarCerebro?: boolean;
 }) {
-  const esConsumidor = rol.id === "consumidor";
+  const esConsumidor = false; // el consumidor final ya no es usuario de la app
 
   const grupos: { titulo: string | null; items: Item[] }[] = [
     {

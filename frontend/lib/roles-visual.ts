@@ -20,18 +20,17 @@ export const ROL_FORMA_SVG: Record<string, string> = {
 };
 
 // Qué eslabón le interesa a cada rol cuando mira el mapa: sus contrapartes.
-// El consumidor final ve dónde puede gastar su score (minoristas); cada
-// eslabón ve de quién se abastece (aguas arriba de la cadena).
+// Cada eslabón ve de quién se abastece (aguas arriba de la cadena).
 export const ROLES_RELEVANTES: Record<string, RolCadena[]> = {
-  consumidor: ["minorista"],
-  comercio: ["mayorista", "distribuidora"],
+  minorista: ["mayorista", "distribuidora"],
+  mayorista: ["distribuidora", "fabrica"],
   distribuidora: ["distribuidora", "fabrica"],
   fabrica: ["distribuidora", "mayorista"],
 };
 
 export const RELEVANTE_TITULO: Record<string, string> = {
-  consumidor: "Dónde podés usar tu score",
-  comercio: "Tus proveedores en la red",
+  minorista: "Tus proveedores en la red",
+  mayorista: "De quiénes te abastecés",
   distribuidora: "De quiénes te abastecés",
   fabrica: "Tu canal de distribución",
 };

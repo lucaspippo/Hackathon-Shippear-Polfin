@@ -8,6 +8,8 @@ import { openDb, createSchema, DB_PATH } from './db.js';
 import { calcularScore } from './scoring.js';
 import { evaluarCredito, conversar, aprobarSolicitud, rechazarSolicitud } from './agente/agente.js';
 import { chatAngela } from './agente/chatAngela.js';
+import { contextoMacroPublico } from './macro.js';
+import { generarInsights } from './agente/insights.js';
 import { ciclarMonitoreo, arrancarMonitor } from './agente/agenteProactivo.js';
 import { POLICY } from './agente/policy.js';
 
@@ -240,6 +242,13 @@ app.get('/api/macro', (_req, res) => {
   res.json(db.prepare('SELECT * FROM macro_referencia ORDER BY mes').all());
 });
 
+// Contexto macro REAL (contexto_macro.json): indicadores + política + lectura +
+// reglas activas + regla de neutralidad. Lo consume la UI para mostrar que el
+// plazo/tasa consideran el contexto del país.
+app.get('/api/macro/contexto', (_req, res) => {
+  res.json(contextoMacroPublico());
+});
+
 // EL endpoint de verificación: totales + comportamiento de pago por deudor.
 // Acá se ve si los datos sostienen la narrativa (estrella/thin/moroso) SIN scoring.
 app.get('/api/resumen', (_req, res) => {
@@ -288,12 +297,13 @@ app.get('/api/resumen', (_req, res) => {
 // Es lo que usa la UI. body: { deudor_id, acreedor_id, monto, contexto? }
 app.post('/api/agente/evaluar-credito', (req, res) => {
   try {
-    const { deudor_id, acreedor_id, monto, contexto } = req.body || {};
+    const { deudor_id, acreedor_id, monto, contexto, plazo_dias } = req.body || {};
     const resultado = evaluarCredito(db, {
       deudorId: Number(deudor_id),
       acreedorId: Number(acreedor_id),
       monto: Number(monto),
       contexto,
+      plazoPreferido: plazo_dias ? Number(plazo_dias) : null,
     });
     res.json(resultado);
   } catch (e) {
@@ -348,6 +358,20 @@ app.post('/api/agente/monitorear', (req, res) => {
 // Detecciones activas del monitor (alimentan el feed)
 app.get('/api/agente/detecciones', (_req, res) => {
   res.json(db.prepare("SELECT * FROM detecciones WHERE estado = 'activa' ORDER BY id DESC").all());
+});
+
+// INSIGHTS PROACTIVOS (AI-native): Ángela lee la red del vendedor activo y
+// genera tarjetas de early-warning priorizadas (cambio de comportamiento,
+// concentración, oportunidad, anomalía, cobros). Se computan en vivo.
+// query: ?entidadId=ID (el vendedor activo)
+app.get('/api/agente/insights', (req, res) => {
+  try {
+    const entId = Number(req.query.entidadId);
+    if (!Number.isFinite(entId)) return res.status(400).json({ error: 'falta entidadId' });
+    res.json(generarInsights(db, entId));
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
 });
 
 // Config del policy engine (para mostrar en la UI del agente)

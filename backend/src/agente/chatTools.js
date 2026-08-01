@@ -13,6 +13,7 @@
 // del motor de scoring determinístico — nunca del modelo.
 // ============================================================================
 import { calcularScore } from '../scoring.js';
+import { contextoMacroPublico } from '../macro.js';
 
 const pesosAr = (n) => '$' + Math.round(n || 0).toLocaleString('es-AR');
 
@@ -54,7 +55,8 @@ export const CHAT_TOOLS = [
   },
   {
     name: 'consultarMacro',
-    description: 'Contexto macro de referencia (inflación mensual, tipo de cambio, tasa de referencia TNA) que ancla las tasas.',
+    description:
+      'Contexto macroeconómico REAL de Argentina (inflación, tasas TAMAR/cheques PyME, tipo de cambio, riesgo país, mora del sistema) y la política de crédito que se deriva: cómo el contexto ajusta PLAZO y SPREAD (nunca el score). Incluye las reglas activas y la regla de neutralidad. Úsala para explicar por qué el contexto ajusta las condiciones. IMPORTANTE: al usarla, hablá SOLO de riesgo e indicadores, nunca de política ni de gobiernos.',
     input_schema: { type: 'object', properties: {} },
   },
   {
@@ -207,10 +209,12 @@ export function ejecutarChatTool(db, nombre, input = {}, ctx = {}) {
     }
 
     case 'consultarMacro': {
-      const m = db.prepare('SELECT * FROM macro_referencia ORDER BY mes DESC LIMIT 1').get();
-      return m
-        ? { mes: m.mes, inflacion_mensual_pct: m.inflacion_mensual_pct, tipo_cambio_oficial: m.tipo_cambio_oficial, tasa_referencia_tna: m.tasa_referencia_tna, nota: m.nota }
-        : { error: 'sin datos macro' };
+      const ctx = contextoMacroPublico();
+      if (!ctx.disponible) {
+        const m = db.prepare('SELECT * FROM macro_referencia ORDER BY mes DESC LIMIT 1').get();
+        return m ? { mes: m.mes, tasa_referencia_tna: m.tasa_referencia_tna, nota: m.nota } : { error: 'sin datos macro' };
+      }
+      return ctx; // indicadores + política + reglas activas + neutralidad
     }
 
     case 'simularCondiciones': {

@@ -24,7 +24,7 @@ const $ar = (n) => '$' + Number(n).toLocaleString('es-AR');
 // ---------------------------------------------------------------------------
 // 1) INVOCACIÓN DIRECTA — cero LLM. La máquina de estados y nada más.
 // ---------------------------------------------------------------------------
-export function evaluarCredito(db, { deudorId, acreedorId, monto, contexto = '', origen = 'directa' }) {
+export function evaluarCredito(db, { deudorId, acreedorId, monto, contexto = '', origen = 'directa', plazoPreferido = null }) {
   const deudor = db.prepare('SELECT * FROM entidades WHERE id = ?').get(deudorId);
   const acreedor = db.prepare('SELECT * FROM entidades WHERE id = ?').get(acreedorId);
   if (!deudor || !acreedor) throw new Error('deudor o acreedor inexistente');
@@ -42,7 +42,7 @@ export function evaluarCredito(db, { deudorId, acreedorId, monto, contexto = '',
     motivo: `motor=pipeline-deterministico · origen=${origen} · límite autónomo=${$ar(POLICY.limite_autonomo_pesos)}`,
   });
 
-  const r = correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen });
+  const r = correrPipeline(db, { deudorId, acreedorId, monto, solicitudId, corridaId, origen, plazoPreferido });
 
   // Verbalización DETERMINÍSTICA: un template que solo repite los números
   // que ya calculó el pipeline. Sin LLM, sin invención posible.
