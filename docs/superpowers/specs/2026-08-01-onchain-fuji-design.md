@@ -115,10 +115,14 @@ link to).
 ### 4. Error handling
 
 In `fuji` mode, a reverted tx, RPC timeout, or insufficient-gas error
-propagates as a real thrown error into the pipeline's existing
-`tipo='error'` audit path (`auditoria` table) — the same path any other
-tool failure already takes. No fallback to mock data on a real-mode
-failure; a failed chain call is a failed operation, not silently
+propagates as a real thrown JS error. Correction from an earlier draft of
+this section: `auditoria.tipo` *allows* an `'error'` value in its `CHECK`
+constraint, but no code actually writes one today — verified by search, zero
+hits. So a chain failure surfaces exactly the way any other tool failure
+already does: the generic `try/catch` already wrapping every route handler
+in `server.js` catches it and returns `400 { error: message }`. No new
+error-observability code is in scope here. No fallback to mock data on a
+real-mode failure; a failed chain call is a failed operation, not silently
 downgraded.
 
 ### 5. Testing
