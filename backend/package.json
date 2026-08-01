@@ -14,6 +14,7 @@
     "verificar:gateway": "node --env-file-if-exists=.env src/verificar-gateway.mjs"
   },
   "dependencies": {
+    "@0xgasless/smart-account": "^0.0.13",
     "@anthropic-ai/sdk": "^0.115.0",
     "cors": "^2.8.5",
     "ethers": "^6.13.4",
