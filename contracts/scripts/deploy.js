@@ -33,10 +33,8 @@ async function main() {
   fs.writeFileSync(path.join(outDir, `${hre.network.name}.json`), JSON.stringify(direcciones, null, 2));
 
   console.log(JSON.stringify(direcciones, null, 2));
-  console.log('\nAgregá esto a backend/.env:');
-  console.log(`POLFIN_SCORE_REGISTRY_ADDRESS=${direcciones.scoreRegistry}`);
-  console.log(`POLFIN_EPAGARE_ADDRESS=${direcciones.ePagare}`);
-  console.log(`POLFIN_MOCK_USDC_ADDRESS=${direcciones.mockUsdc}`);
+  console.log(`\nDirecciones escritas en contracts/deployments/${hre.network.name}.json`);
+  console.log('El backend las lee de ahí directo — no hace falta pegarlas en ningún .env.');
 }
 
 main().catch((error) => {
