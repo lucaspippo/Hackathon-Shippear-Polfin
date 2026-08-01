@@ -12,11 +12,14 @@ backend/data/*.db-journal
 backend/data/*.db-wal
 backend/data/*.db-shm
 
-# env — la ANTHROPIC_API_KEY vive acá y NO se sube NUNCA
+# env — la ANTHROPIC_API_KEY / AI_GATEWAY_API_KEY viven acá y NO se suben NUNCA
 .env
 .env.*
 *.env
 .env*.local
+# ...pero la plantilla sin secretos SÍ se versiona (documenta las vars):
+!.env.example
+!backend/.env.example
 
 # misc
 *.log
