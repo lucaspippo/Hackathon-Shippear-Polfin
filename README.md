@@ -27,11 +27,13 @@ polfin/
 │   ├── src/scores-report.js  reporte por consola (npm run scores)
 │   ├── src/agente/    el agente (Prompt 3)
 │   │   ├── agente.js       loop percibe→decide→ejecuta + human-in-the-loop
-│   │   ├── tools.js        registro de tools (schema Anthropic) + stubs on-chain
+│   │   ├── tools.js        registro de tools (schema Anthropic), branch mock/fuji
 │   │   ├── policy.js       policy engine (límites, allowlist, auditoría)
 │   │   └── llm/            LLMProvider: mock.js | anthropic.js (por LLM_MODE)
+│   ├── src/chain/     ethers.js — wallet, contratos, llamadas Fuji (Prompt 4)
 │   ├── src/server.js  API REST
 │   └── data/polfin.db la DB generada (gitignoreada, se regenera)
+├── contracts/  Hardhat — ScoreRegistry, EPagare (ERC-721), MockUSDC (Fuji)
 └── frontend/   Next.js + React + Tailwind + shadcn/ui
 ```
 
@@ -175,5 +177,7 @@ emite el instrumento) · Rubén + $120k → rechazada (score 290, límite $36k).
 
 ## Próximos pasos (secuencia del doc maestro)
 
-3. Agente (tools + loop + policy engine) → 4. On-chain (Fuji: scoring registry +
-instrumento RWA) → 5. Vistas → 6. Cerebro/grafo → 7. Modo demo.
+3. Agente (tools + loop + policy engine) → 4. On-chain (Fuji: scoring
+registry + instrumento RWA) ✅ contratos reales deployados detrás de
+`POLFIN_CHAIN_MODE=fuji`, ver `contracts/` → 5. Vistas → 6. Cerebro/grafo →
+7. Modo demo.
