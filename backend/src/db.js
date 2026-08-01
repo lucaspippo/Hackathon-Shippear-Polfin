@@ -189,4 +189,9 @@ export function createSchema(db) {
   try {
     db.exec(`ALTER TABLE instrumentos ADD COLUMN aceptado_at TEXT`);
   } catch { /* la columna ya existe */ }
+  // Migración: id del NFT minteado en el contrato EPagare (Prompt 4, Fuji).
+  // NULL para instrumentos creados en POLFIN_CHAIN_MODE=mock.
+  try {
+    db.exec(`ALTER TABLE instrumentos ADD COLUMN token_id INTEGER`);
+  } catch { /* la columna ya existe */ }
 }
