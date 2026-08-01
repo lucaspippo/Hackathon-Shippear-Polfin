@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs';
 import { openDb, createSchema, DB_PATH } from './db.js';
 import { calcularScore } from './scoring.js';
 import { evaluarCredito, conversar, aprobarSolicitud, rechazarSolicitud } from './agente/agente.js';
+import { chatAngela } from './agente/chatAngela.js';
 import { ciclarMonitoreo, arrancarMonitor } from './agente/agenteProactivo.js';
 import { POLICY } from './agente/policy.js';
 
@@ -305,6 +306,30 @@ app.post('/api/agente/evaluar-credito', (req, res) => {
 app.post('/api/agente/conversar', async (req, res) => {
   try {
     res.json(await conversar(db, { texto: req.body?.texto }));
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
+});
+
+// CHAT ABIERTO (el uso de IA central): el dueño pregunta cualquier cosa sobre su
+// negocio en lenguaje natural y Ángela razona sobre los datos reales, eligiendo y
+// encadenando tools de SOLO LECTURA. Es de consulta/análisis: NO ejecuta acciones
+// que muevan dinero (eso va por el flujo formal con approval gate).
+// body: { pregunta, entidadId, rol?, nombre?, historial?: [{role, content}] }
+app.post('/api/agente/chat', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const pregunta = (b.pregunta ?? b.texto ?? '').toString();
+    if (!pregunta.trim()) return res.status(400).json({ error: 'falta la pregunta' });
+    const entId = Number(b.entidadId ?? b.entidad_id);
+    const ent = Number.isFinite(entId) ? db.prepare('SELECT nombre FROM entidades WHERE id = ?').get(entId) : null;
+    res.json(await chatAngela(db, {
+      pregunta,
+      entidadActivaId: Number.isFinite(entId) ? entId : null,
+      entidadNombre: ent?.nombre ?? b.nombre ?? null,
+      rol: b.rol ?? null,
+      historial: Array.isArray(b.historial) ? b.historial : [],
+    }));
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }

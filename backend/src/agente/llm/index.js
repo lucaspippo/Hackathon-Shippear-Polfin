@@ -10,8 +10,8 @@
 // Los tres son conmutables con una sola variable: si el Gateway falla, se vuelve
 // a mock o anthropic cambiando LLM_MODE, sin tocar código.
 import { crearMockProvider } from './mock.js';
-import { crearAnthropicProvider } from './anthropic.js';
-import { crearGatewayProvider } from './gateway.js';
+import { crearAnthropicProvider, crearClienteAnthropic } from './anthropic.js';
+import { crearGatewayProvider, crearClienteGateway } from './gateway.js';
 
 export function elegirProvider() {
   const modo = (process.env.LLM_MODE || 'mock').toLowerCase();
@@ -21,4 +21,15 @@ export function elegirProvider() {
     console.warn(`LLM_MODE="${modo}" desconocido — uso mock. Valores: mock | anthropic | gateway`);
   }
   return crearMockProvider();
+}
+
+// Cliente LLM crudo (client + model) para el modo activo, para usos que NO son
+// los bordes del pipeline de crédito sino un loop agéntico propio (el chat
+// abierto de Ángela). En mock devuelve client:null — el chat necesita un modelo
+// real y lo informa con claridad, sin romper nada.
+export function crearClienteLLM() {
+  const modo = (process.env.LLM_MODE || 'mock').toLowerCase();
+  if (modo === 'gateway') return { modo, ...crearClienteGateway() };
+  if (modo === 'anthropic') return { modo, ...crearClienteAnthropic() };
+  return { modo: 'mock', client: null, model: null, nombre: 'mock (sin modelo real)' };
 }

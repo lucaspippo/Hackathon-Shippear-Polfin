@@ -30,7 +30,9 @@ import { crearProviderAnthropicShaped } from './anthropicShaped.js';
 // El SDK de Anthropic le agrega `/v1/messages` por su cuenta.
 export const GATEWAY_BASE_URL = process.env.AI_GATEWAY_BASE_URL || 'https://ai-gateway.vercel.sh';
 
-export function crearGatewayProvider() {
+// Construye el cliente del Gateway ya configurado (baseURL + key + modelo).
+// Lo usan el provider de bordes (abajo) y el chat abierto (chatAngela.js).
+export function crearClienteGateway() {
   // Aceptamos AI_GATEWAY_API_KEY (nombre de la doc de Vercel) o V0_API_KEY como alias.
   const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.V0_API_KEY;
   if (!apiKey) {
@@ -40,8 +42,12 @@ export function crearGatewayProvider() {
     );
   }
   const model = process.env.GATEWAY_MODEL || 'anthropic/claude-sonnet-5';
-  const client = new Anthropic({ apiKey, baseURL: GATEWAY_BASE_URL });
-  const base = crearProviderAnthropicShaped({ client, model, nombre: `gateway:${model}` });
+  return { client: new Anthropic({ apiKey, baseURL: GATEWAY_BASE_URL }), model, nombre: `gateway:${model}` };
+}
+
+export function crearGatewayProvider() {
+  const { client, model, nombre } = crearClienteGateway();
+  const base = crearProviderAnthropicShaped({ client, model, nombre });
 
   // Envolvemos los dos bordes para que un fallo del Gateway sea CLARO en consola
   // y no silencioso, sin tumbar el backend:

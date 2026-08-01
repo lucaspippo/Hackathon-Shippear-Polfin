@@ -28,7 +28,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { crearProviderAnthropicShaped } from './anthropicShaped.js';
 
-export function crearAnthropicProvider() {
+// Construye el cliente directo de Anthropic ya configurado. Lo usan el provider
+// de bordes (abajo) y el chat abierto (chatAngela.js).
+export function crearClienteAnthropic() {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
       'LLM_MODE=anthropic pero falta ANTHROPIC_API_KEY. ' +
@@ -37,5 +39,10 @@ export function crearAnthropicProvider() {
   }
   const client = new Anthropic(); // toma ANTHROPIC_API_KEY del entorno
   const model = process.env.ANTHROPIC_MODEL || 'claude-opus-5';
-  return crearProviderAnthropicShaped({ client, model, nombre: `anthropic:${model}` });
+  return { client, model, nombre: `anthropic:${model}` };
+}
+
+export function crearAnthropicProvider() {
+  const { client, model, nombre } = crearClienteAnthropic();
+  return crearProviderAnthropicShaped({ client, model, nombre });
 }
