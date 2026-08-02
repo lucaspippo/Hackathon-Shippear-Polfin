@@ -64,6 +64,10 @@ export type Instrumento = {
   tasa_tna: number; plazo_dias: number; fecha_vencimiento: string;
   estado: "activo" | "pagado" | "vencido";
   contrato_address: string; tx_hash: string; red: string; token_id: number | null;
+  red_label?: string;                    // "Avalanche Fuji (testnet)" | "Avalanche C-Chain" | "Avalanche (modo demo)"
+  explorer_url?: string | null;          // Snowtrace del contrato, o null en modo demo
+  tx_explorer_url?: string | null;       // Snowtrace de la tx, o null en modo demo
+  nft_explorer_url?: string | null;      // Snowtrace del NFT, o null si no hay token_id
   aceptado: number; aceptado_at: string | null; created_at: string;
   deudor_nombre: string; deudor_tipo?: string; deudor_ciudad?: string;
   acreedor_nombre: string; acreedor_rubro?: string; acreedor_ciudad?: string;
@@ -133,12 +137,13 @@ export type Red = {
 export type OnchainScore = {
   entidad: { id: number; nombre: string; tipo: string; rol_cadena: string | null; rubro: string | null; ciudad: string };
   registrado: boolean;
-  chain_mode: "mock" | "fuji" | string;
-  red: string;                 // "fuji" | "fuji-mock"
-  es_real: boolean;            // true si está escrito en Fuji real
+  chain_mode: "mock" | "fuji" | "avalanche" | string;
+  red: string;                 // "fuji" | "avalanche" | "mock"
+  red_label: string;           // "Avalanche Fuji (testnet)" | "Avalanche C-Chain" | "Avalanche (modo demo)"
+  es_real: boolean;            // true si está escrito en la cadena real (fuji o avalanche)
   score: number | null;
   tx_hash: string | null;
   contrato_address: string | null;
   timestamp: string | null;
-  explorer_url: string | null; // Snowtrace (fuji) o null (mock)
+  explorer_url: string | null; // Snowtrace (fuji o avalanche) o null (mock)
 };
