@@ -43,6 +43,21 @@ services:
       # vivo; el botón "Vigilá la red ahora" lo dispara on-demand igual).
       - key: POLFIN_MONITOR_INTERVAL
         value: "0"
+      # --- On-chain (Avalanche Fuji, vía 0xgasless) — OPCIONAL ----------------
+      # Sin cargar estas 4, el backend queda en POLFIN_CHAIN_MODE=mock
+      # (default, no hace falta declararlo). Todavía no hay contratos
+      # deployados a Fuji (contracts/deployments/ vacío) — no actives
+      # POLFIN_CHAIN_MODE=fuji hasta correr `npm run contracts:deploy:fuji`.
+      # Cuando lo hagas: cargá estos 4 secretos en el dashboard y agregá
+      # POLFIN_CHAIN_MODE con value "fuji" acá al lado de POLFIN_MONITOR_INTERVAL.
+      - key: POLFIN_FUJI_RPC_URL
+        sync: false
+      - key: POLFIN_OPERATOR_PRIVATE_KEY_FUJI   # SECRETO — wallet operadora de testnet
+        sync: false
+      - key: POLFIN_0XGASLESS_BUNDLER_URL_FUJI   # SECRETO — incluye la key en el path
+        sync: false
+      - key: POLFIN_0XGASLESS_PAYMASTER_URL_FUJI   # SECRETO — incluye la key en el path
+        sync: false
 
   # ------------------------------------------------------------- FRONTEND (Next)
   - type: web

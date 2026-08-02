@@ -39,6 +39,10 @@ los valores marcados abajo.
 | `AI_GATEWAY_API_KEY` | **sí** | la key del AI Gateway de Vercel/V0 | la misma que está en `backend/.env` local (dashboard de Vercel AI Gateway) |
 | `FRONTEND_URL` | no* | URL del frontend en Render | la sabés tras deployar el front (opcional; acota CORS) |
 | `POLFIN_MONITOR_INTERVAL` | no | `0` | fijo (ya en render.yaml) — apaga el loop de fondo |
+| `POLFIN_FUJI_RPC_URL` | no** | RPC de Fuji | opcional — solo si activás on-chain (ver abajo) |
+| `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` | **sí**** | private key de la wallet operadora de testnet | opcional — solo si activás on-chain |
+| `POLFIN_0XGASLESS_BUNDLER_URL_FUJI` | **sí**** | URL del bundler (dashboard.0xgasless.com, incluye key) | opcional — solo si activás on-chain |
+| `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI` | **sí**** | URL del paymaster (dashboard.0xgasless.com, incluye key) | opcional — solo si activás on-chain |
 | `PORT` | — | *(automático)* | lo inyecta Render; NO cargar a mano |
 
 ### Frontend (`polfin-frontend`)
@@ -52,8 +56,15 @@ los valores marcados abajo.
 \* `FRONTEND_URL` no es un secreto, pero se carga a mano porque su valor
 (la URL del front) no se conoce hasta después del primer deploy.
 
-**Único secreto real: `AI_GATEWAY_API_KEY`** (en el backend). Todo lo demás es
-config pública. El `.env` con la key **no** está en el repo (gitignoreado).
+\*\* Las 4 variables de Fuji son **opcionales**: sin cargarlas, el backend
+queda en `POLFIN_CHAIN_MODE=mock` (default, funciona igual salvo por las
+funciones on-chain). Activalas recién cuando corras el deploy de contratos
+(`contracts/deployments/fuji.json` todavía no existe) — ahí cargás las 4 en
+el dashboard y agregás `POLFIN_CHAIN_MODE` con valor `fuji` en `render.yaml`.
+
+**Secretos reales: `AI_GATEWAY_API_KEY`** siempre, y las 3 variables de Fuji
+marcadas arriba **si** activás on-chain. Todo lo demás es config pública. El
+`.env` con las keys **no** está en el repo (gitignoreado).
 
 ## Verificar tras el deploy
 
