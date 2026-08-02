@@ -94,15 +94,18 @@ Vía `gh` CLI (alternativa, si lo tenés instalado y con permisos de admin):
 
 ```bash
 gh api repos/lucaspippo/Hackathon-Shippear-Polfin/branches/master/protection \
-  -X PUT \
-  -H "Accept: application/vnd.github+json" \
-  -f required_status_checks.strict=true \
-  -f 'required_status_checks.contexts[]=backend' \
-  -f 'required_status_checks.contexts[]=frontend' \
-  -f 'required_status_checks.contexts[]=contracts' \
-  -f enforce_admins=false \
-  -f required_pull_request_reviews=null \
-  -f restrictions=null
+  --method PUT \
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["backend", "frontend", "contracts"]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null
+}
+EOF
 ```
 
 ### 3. GitHub Environment para el deploy de contratos
