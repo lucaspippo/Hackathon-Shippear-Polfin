@@ -87,7 +87,9 @@ end to end — including the orchestration, not just the tools**.
   tools in `scoring.js` / `tools.js`.
 - `tools.js` is an Anthropic tool-use-schema registry. The on-chain tools
   (`generarInstrumento`, `registrarScoreOnChain`, `ejecutarPagoStablecoin`)
-  are mocked stubs marked `PROMPT 4` — not yet wired to a real chain.
+  send real, gas-sponsored transactions (via 0xgasless) against Avalanche
+  Fuji or mainnet C-Chain when `POLFIN_CHAIN_MODE` is `fuji`/`avalanche`;
+  `mock` (default) keeps the old simulated behavior.
 - `policy.js` enforces the autonomy limit (`POLFIN_LIMITE_AUTONOMO`), a tool
   allowlist, mandatory human approval for *any* stablecoin payment
   regardless of amount, and a full audit trail (every policy decision + tool
@@ -147,8 +149,14 @@ names.
 `LLM_MODE`, `ANTHROPIC_API_KEY`, `POLFIN_FALLBACKS`,
 `POLFIN_LIMITE_AUTONOMO`, `POLFIN_MONITOR_INTERVAL`, `POLFIN_VENC_VENTANA`,
 `POLFIN_API_PORT` (backend, default 4000), `NEXT_PUBLIC_API_URL` (frontend →
-backend base URL), `POLFIN_CHAIN_MODE` (`mock` default | `fuji`),
-`POLFIN_OPERATOR_PRIVATE_KEY`, `POLFIN_FUJI_RPC_URL`,
-`POLFIN_SCORE_REGISTRY_ADDRESS`, `POLFIN_EPAGARE_ADDRESS`,
-`POLFIN_MOCK_USDC_ADDRESS` (all four only required when
-`POLFIN_CHAIN_MODE=fuji` — see `contracts/README` deploy flow).
+backend base URL), `POLFIN_CHAIN_MODE` (`mock` default | `fuji` | `avalanche`),
+`POLFIN_FUJI_RPC_URL` / `POLFIN_AVALANCHE_RPC_URL`,
+`POLFIN_OPERATOR_PRIVATE_KEY_FUJI` / `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE`,
+`POLFIN_0XGASLESS_BUNDLER_URL_FUJI` / `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI` /
+`POLFIN_0XGASLESS_BUNDLER_URL_AVALANCHE` /
+`POLFIN_0XGASLESS_PAYMASTER_URL_AVALANCHE` (gas patrocinado vía la Smart
+Account de 0xgasless — ver
+`docs/superpowers/specs/2026-08-01-avalanche-gasless-design.md`). Las
+direcciones de los 3 contratos ya no van en el `.env`: se leen de
+`contracts/deployments/{fuji|avalanche}.json`, generado por
+`npm run contracts:deploy:fuji` / `:avalanche`.
