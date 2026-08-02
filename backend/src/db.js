@@ -93,19 +93,19 @@ export function createSchema(db) {
       plazo_dias    INTEGER NOT NULL,
       fecha_vencimiento TEXT NOT NULL,
       estado        TEXT NOT NULL DEFAULT 'activo' CHECK (estado IN ('activo', 'pagado', 'vencido')),
-      contrato_address TEXT NOT NULL,              -- MOCK hasta el Prompt 4
-      tx_hash       TEXT NOT NULL,                 -- MOCK hasta el Prompt 4
-      red           TEXT NOT NULL DEFAULT 'fuji-mock',
+      contrato_address TEXT NOT NULL,              -- real en fuji/avalanche, mock en modo demo
+      tx_hash       TEXT NOT NULL,                 -- real en fuji/avalanche, mock en modo demo
+      red           TEXT NOT NULL DEFAULT 'mock',
       created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- Registro de scores "on-chain". MOCK hasta el Prompt 4 (scoring registry en Fuji).
+    -- Registro de scores "on-chain" (real en fuji/avalanche, mock en modo demo).
     CREATE TABLE IF NOT EXISTS scores_onchain (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       entidad_id  INTEGER NOT NULL REFERENCES entidades(id),
       score       INTEGER NOT NULL,
-      tx_hash     TEXT NOT NULL,                   -- MOCK hasta el Prompt 4
-      red         TEXT NOT NULL DEFAULT 'fuji-mock',
+      tx_hash     TEXT NOT NULL,                   -- real en fuji/avalanche, mock en modo demo
+      red         TEXT NOT NULL DEFAULT 'mock',
       created_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 

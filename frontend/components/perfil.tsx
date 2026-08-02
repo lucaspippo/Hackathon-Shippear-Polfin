@@ -111,7 +111,7 @@ export function Perfil({
               <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden><path d="M5 12.5 10 17l9-10" stroke="var(--color-brand)" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </span>
             <div className="text-[13px] font-semibold">{chain && !chain.registrado ? "Reputación on-chain" : "Verificado on-chain"}</div>
-            <Pill tono="brand">Avalanche{chain?.es_real ? " Fuji" : ""}</Pill>
+            <Pill tono="brand">{chain?.red_label ?? "Avalanche"}</Pill>
           </div>
 
           {chain && !chain.registrado ? (
@@ -136,7 +136,7 @@ export function Perfil({
           <div className="mt-3 space-y-1.5 text-[11.5px]">
             <div className="flex justify-between gap-3">
               <span className="text-tenue">Red</span>
-              <span className="num text-tinta">Avalanche {chain?.es_real ? "Fuji (testnet)" : "Fuji (testnet · mock)"}</span>
+              <span className="num text-tinta">{chain?.red_label ?? "Avalanche (modo demo)"}</span>
             </div>
             {chain?.contrato_address && (
               <div className="flex justify-between gap-3">
@@ -170,7 +170,7 @@ export function Perfil({
             El score no vive solo en PolFin: queda registrado en Avalanche —
             portable, infalsificable y propiedad {esYo ? "tuya" : "del cliente"}. Ese es el
             buró de crédito descentralizado, hecho visible.
-            {!chain?.es_real && <span className="block mt-1 text-tenue/70">(Modo demo: registro simulado. Con POLFIN_CHAIN_MODE=fuji el QR lleva a la transacción real en Snowtrace.)</span>}
+            {!chain?.es_real && <span className="block mt-1 text-tenue/70">(Modo demo: registro simulado. Con POLFIN_CHAIN_MODE=fuji o avalanche el QR lleva a la transacción real en Snowtrace.)</span>}
           </p>
           </>
           )}

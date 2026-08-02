@@ -13,8 +13,13 @@
 import { randomBytes } from 'node:crypto';
 import { calcularScore } from '../scoring.js';
 import { escribirScoreOnChain, mintearInstrumentoOnChain, liquidarPagoStablecoinOnChain } from '../chain/onchain.js';
+import { esRedReal, redLabel, explorerUrl } from '../chain/redes.js';
 
 const modoChain = () => (process.env.POLFIN_CHAIN_MODE || 'mock').toLowerCase();
+const redActual = () => {
+  const modo = modoChain();
+  return esRedReal(modo) ? modo : 'mock';
+};
 
 // OJO: los nombres de tools deben matchear ^[a-zA-Z0-9_-]{1,64}$ (sin ñ).
 export const TOOLS = [
@@ -194,13 +199,14 @@ export async function ejecutarTool(db, nombre, input, ctx = {}) {
     }
 
     case 'generarInstrumento': {
-      // POLFIN_CHAIN_MODE=fuji: mintea un NFT real en el contrato EPagare.
-      // POLFIN_CHAIN_MODE=mock (default): mismo comportamiento que siempre.
+      // POLFIN_CHAIN_MODE=fuji|avalanche: mintea un NFT real (patrocinado) en
+      // el contrato EPagare de esa red. POLFIN_CHAIN_MODE=mock (default):
+      // mismo comportamiento simulado que siempre.
       const venc = new Date(Date.now() + input.plazoDias * 24 * 60 * 60 * 1000)
         .toISOString().slice(0, 10);
-      const red = modoChain() === 'fuji' ? 'fuji' : 'fuji-mock';
+      const red = redActual();
       let contrato, tx, tokenId = null;
-      if (modoChain() === 'fuji') {
+      if (red !== 'mock') {
         const resultadoChain = await mintearInstrumentoOnChain({
           deudorId: input.deudorId, acreedorId: input.acreedorId, monto: input.monto,
           tasaTna: input.tasaTna, plazoDias: input.plazoDias, fechaVencimiento: venc,
@@ -230,15 +236,19 @@ export async function ejecutarTool(db, nombre, input, ctx = {}) {
         tx_hash: tx,
         token_id: tokenId,
         red,
-        nota: red === 'fuji'
-          ? 'NFT del e-pagaré minteado en Avalanche Fuji (testnet)'
-          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji con los contratos deployados para el mint real',
+        red_label: redLabel(red),
+        explorer_url: explorerUrl(red, 'address', contrato),
+        tx_explorer_url: explorerUrl(red, 'tx', tx),
+        nft_explorer_url: tokenId != null ? explorerUrl(red, 'nft', `${contrato}/${tokenId}`) : null,
+        nota: red !== 'mock'
+          ? `NFT del e-pagaré minteado en ${redLabel(red)}`
+          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji o avalanche con los contratos deployados para el mint real',
       };
     }
 
     case 'registrarScoreOnChain': {
-      const red = modoChain() === 'fuji' ? 'fuji' : 'fuji-mock';
-      const tx = modoChain() === 'fuji'
+      const red = redActual();
+      const tx = red !== 'mock'
         ? (await escribirScoreOnChain(input.entidadId, input.score)).tx_hash
         : mockHash();
       db.prepare(`
@@ -247,25 +257,29 @@ export async function ejecutarTool(db, nombre, input, ctx = {}) {
       `).run(input.entidadId, input.score, tx, red);
       return {
         entidad_id: input.entidadId, score: input.score, tx_hash: tx, red,
-        nota: red === 'fuji'
-          ? 'Score escrito en el ScoreRegistry real de Avalanche Fuji (testnet)'
-          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji con los contratos deployados para la escritura real',
+        red_label: redLabel(red),
+        explorer_url: explorerUrl(red, 'tx', tx),
+        nota: red !== 'mock'
+          ? `Score escrito en el ScoreRegistry real de ${redLabel(red)}`
+          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji o avalanche con los contratos deployados para la escritura real',
       };
     }
 
     case 'ejecutarPagoStablecoin': {
       // Esta tool SIEMPRE requiere aprobación humana (ver policy.js), así que
       // en el flujo normal llega acá solo después de un OK explícito del dueño.
-      const red = modoChain() === 'fuji' ? 'fuji' : 'fuji-mock';
-      const tx = modoChain() === 'fuji'
+      const red = redActual();
+      const tx = red !== 'mock'
         ? (await liquidarPagoStablecoinOnChain({ monto: input.monto, destino: input.destino })).tx_hash
         : mockHash();
       return {
         monto_usdc: input.monto, destino: input.destino,
         tx_hash: tx, red,
-        nota: red === 'fuji'
-          ? 'USDC de prueba (pfUSDC) minteado y liquidado en Avalanche Fuji (testnet)'
-          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji con los contratos deployados para la liquidación real',
+        red_label: redLabel(red),
+        explorer_url: explorerUrl(red, 'tx', tx),
+        nota: red !== 'mock'
+          ? `USDC de prueba (pfUSDC) minteado y liquidado en ${redLabel(red)}`
+          : 'MOCK: seteá POLFIN_CHAIN_MODE=fuji o avalanche con los contratos deployados para la liquidación real',
       };
     }
 

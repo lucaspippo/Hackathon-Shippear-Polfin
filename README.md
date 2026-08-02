@@ -22,7 +22,9 @@ conversa y detecta señales tempranas — nunca inventa un número de decisión.
 - **Shell** (`frontend/`, Next.js): selector de rol en la cadena
   (Fábrica/Distribuidora/Mayorista/Minorista), feed inteligente, Cerebro
   (grafo de red), mapa, "Nueva venta a plazo" que genera el e-pagaré para entregar.
-- On-chain (Avalanche Fuji) sigue en stubs marcados `PROMPT 4` en `tools.js`.
+- On-chain real en Avalanche Fuji (testnet) y C-Chain (mainnet), con el gas
+  de las 3 tools on-chain patrocinado por 0xgasless (`POLFIN_CHAIN_MODE=fuji`
+  o `avalanche`) — ver `contracts/README` para el flujo de deploy.
 
 **Deploy:** dos web services en Render (backend + frontend) vía `render.yaml`.
 La DB SQLite se **auto-seedea en el arranque**. Ver **[DEPLOY.md](DEPLOY.md)**.

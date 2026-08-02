@@ -1,5 +1,13 @@
 # On-chain real en Avalanche (Fuji + mainnet) con gas patrocinado por 0xgasless — Implementation Plan
 
+> **Estado (2026-08-02):** Tareas 1-13 (todo el código: contratos, backend,
+> frontend, docs) completas, auditadas y pusheadas a
+> `worktree-avalanche-gasless`. Solo faltan las Tareas 14-15, que son 100%
+> manuales (credenciales propias + deploy real) — la Tarea 15 (mainnet)
+> queda fuera de alcance por ahora, el foco es Fuji. Pasos manuales
+> pendientes detallados en
+> `docs/superpowers/plans/2026-08-02-avalanche-gasless-pasos-manuales-fuji.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deployar de verdad los tres contratos de PolFin en Avalanche Fuji (testnet) y Avalanche C-Chain (mainnet), y hacer que las tres tools on-chain del agente (`generarInstrumento`, `registrarScoreOnChain`, `ejecutarPagoStablecoin`) manden transacciones reales con el gas patrocinado por 0xgasless, en vez de que la wallet operadora lo pague.
@@ -26,22 +34,22 @@
 
 **Interfaces:** ninguna (tarea de verificación pura).
 
-- [ ] **Step 1: Instalar dependencias**
+- [x] **Step 1: Instalar dependencias**
 
 Run: `npm run contracts:install` (desde la raíz del repo)
 Expected: instala sin errores. `contracts/node_modules/` queda creado (gitignoreado).
 
-- [ ] **Step 2: Compilar**
+- [x] **Step 2: Compilar**
 
 Run: `npm run contracts:compile`
 Expected: `Compiled 3 Solidity files successfully` (o similar), sin errores.
 
-- [ ] **Step 3: Correr los tests existentes**
+- [x] **Step 3: Correr los tests existentes**
 
 Run: `npm run contracts:test`
 Expected: los tests de `EPagare.test.js`, `MockUSDC.test.js`, `ScoreRegistry.test.js` pasan (PASS), sin fallos.
 
-- [ ] **Step 4: Confirmar que no hay cambios para commitear**
+- [x] **Step 4: Confirmar que no hay cambios para commitear**
 
 Run: `git status`
 Expected: `contracts/node_modules/`, `contracts/artifacts/`, `contracts/cache/` no aparecen (ya gitignoreados). Si `contracts/package-lock.json` cambió, es la única excepción — en ese caso sí commitear solo ese archivo con `git add contracts/package-lock.json && git commit -m "chore(contracts): actualizar lockfile"`. Si no cambió nada, no hay commit para esta tarea.
@@ -56,7 +64,7 @@ Expected: `contracts/node_modules/`, `contracts/artifacts/`, `contracts/cache/` 
 **Interfaces:**
 - Produces: `REDES` (objeto `{ fuji: {label, explorerBase}, avalanche: {label, explorerBase} }`), `esRedReal(red: string): boolean`, `redLabel(red: string): string`, `explorerUrl(red: string, tipo: 'tx'|'address'|'nft', valor: string|null): string|null` — usados por `tools.js` (Tarea 9) y `server.js` (Tarea 10).
 
-- [ ] **Step 1: Escribir el archivo**
+- [x] **Step 1: Escribir el archivo**
 
 ```js
 // backend/src/chain/redes.js
@@ -93,7 +101,7 @@ export function explorerUrl(red, tipo, valor) {
 }
 ```
 
-- [ ] **Step 2: Smoke check**
+- [x] **Step 2: Smoke check**
 
 Run (desde la raíz del repo):
 ```bash
@@ -120,7 +128,7 @@ process.exit(fallos === 0 ? 0 : 1);
 ```
 Expected: `OK redes.js`, exit code 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/src/chain/redes.js
@@ -139,7 +147,7 @@ git commit -m "feat(backend): helper de redes/explorer URLs compartido"
 **Interfaces:**
 - Produces: red `avalanche` en Hardhat (chainId 43114), scripts `contracts:deploy:avalanche` (raíz) / `deploy:avalanche` (`contracts/`).
 
-- [ ] **Step 1: Actualizar `contracts/hardhat.config.js`**
+- [x] **Step 1: Actualizar `contracts/hardhat.config.js`**
 
 Reemplazar todo el archivo:
 
@@ -172,26 +180,26 @@ module.exports = {
 
 (Nota: `POLFIN_OPERATOR_PRIVATE_KEY_FUJI`/`_AVALANCHE` reemplazan a `POLFIN_OPERATOR_PRIVATE_KEY` sin sufijo — ya reflejado en `contracts/.env.example`.)
 
-- [ ] **Step 2: Agregar el script `deploy:avalanche` en `contracts/package.json`**
+- [x] **Step 2: Agregar el script `deploy:avalanche` en `contracts/package.json`**
 
 En el bloque `"scripts"`, agregar la línea (después de `"deploy:fuji"`):
 ```json
     "deploy:avalanche": "hardhat run scripts/deploy.js --network avalanche"
 ```
 
-- [ ] **Step 3: Agregar el script `contracts:deploy:avalanche` en el `package.json` de la raíz**
+- [x] **Step 3: Agregar el script `contracts:deploy:avalanche` en el `package.json` de la raíz**
 
 En el bloque `"scripts"`, agregar (después de `"contracts:deploy:fuji"`):
 ```json
     "contracts:deploy:avalanche": "npm --prefix contracts run deploy:avalanche"
 ```
 
-- [ ] **Step 4: Verificar que sigue compilando y testeando**
+- [x] **Step 4: Verificar que sigue compilando y testeando**
 
 Run: `npm run contracts:compile && npm run contracts:test`
 Expected: mismo resultado que en la Tarea 1, Step 2/3 (cambiar la red en config no afecta compile/test, que corren contra la red local de Hardhat).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/hardhat.config.js contracts/package.json package.json
@@ -208,7 +216,7 @@ git commit -m "feat(contracts): agregar red avalanche mainnet + env vars por suf
 **Interfaces:**
 - Sin cambio de interfaz — el script sigue escribiendo `contracts/deployments/{network}.json` (esto YA lo hace hoy, no hay que agregarlo).
 
-- [ ] **Step 1: Reemplazar el bloque final**
+- [x] **Step 1: Reemplazar el bloque final**
 
 En `contracts/scripts/deploy.js`, reemplazar las líneas 36-39:
 
@@ -226,12 +234,12 @@ por:
   console.log('El backend las lee de ahí directo — no hace falta pegarlas en ningún .env.');
 ```
 
-- [ ] **Step 2: Smoke test contra la red local de Hardhat (sin credenciales reales)**
+- [x] **Step 2: Smoke test contra la red local de Hardhat (sin credenciales reales)**
 
 Run: `npx hardhat run scripts/deploy.js --network hardhat` (desde `contracts/`)
 Expected: deploya los 3 contratos contra la red efímera en memoria de Hardhat, imprime las direcciones y el nuevo mensaje, y escribe `contracts/deployments/hardhat.json` (gitignoreado, se puede borrar después).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add contracts/scripts/deploy.js
@@ -250,7 +258,7 @@ git commit -m "chore(contracts): actualizar mensaje de deploy (direcciones vía 
 - Consumes: `contracts/deployments/{red}.json` (escrito por la Tarea 4/8), `process.env.POLFIN_CHAIN_MODE`.
 - Produces: `obtenerRedActiva(): 'fuji'|'avalanche'` (lanza si `POLFIN_CHAIN_MODE` no es una red real), `obtenerWalletOperador(): ethers.Wallet` (sin cambio de firma) — usados por `gasless.js` (Tarea 6) y `contracts.js`. `obtenerScoreRegistry()`, `obtenerEPagare()`, `obtenerMockUSDC()` (sin cambio de firma) — usados por `onchain.js` (Tarea 7).
 
-- [ ] **Step 1: Reescribir `backend/src/chain/provider.js`**
+- [x] **Step 1: Reescribir `backend/src/chain/provider.js`**
 
 ```js
 // backend/src/chain/provider.js
@@ -286,7 +294,7 @@ export function obtenerWalletOperador() {
 }
 ```
 
-- [ ] **Step 2: Reescribir `backend/src/chain/contracts.js`**
+- [x] **Step 2: Reescribir `backend/src/chain/contracts.js`**
 
 ```js
 // backend/src/chain/contracts.js
@@ -341,7 +349,7 @@ export function obtenerMockUSDC() {
 }
 ```
 
-- [ ] **Step 3: Smoke check — confirmar que falla con el mensaje correcto sin config**
+- [x] **Step 3: Smoke check — confirmar que falla con el mensaje correcto sin config**
 
 ```bash
 node --input-type=module -e "
@@ -358,7 +366,7 @@ try {
 ```
 Expected: imprime `OK, error esperado: POLFIN_FUJI_RPC_URL y POLFIN_OPERATOR_PRIVATE_KEY_FUJI son obligatorias en POLFIN_CHAIN_MODE=fuji`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/src/chain/provider.js backend/src/chain/contracts.js
@@ -379,7 +387,7 @@ git commit -m "feat(backend): wallet y direcciones de contrato por red activa"
 - Consumes: `obtenerWalletOperador()`, `obtenerRedActiva()` de `provider.js` (Tarea 5).
 - Produces: `enviarSponsored({ to: string, data: string, value?: bigint }): Promise<{ tx_hash: string, receipt: object|null }>` — lo consume `onchain.js` (Tarea 7).
 
-- [ ] **Step 1: Investigar el paquete real**
+- [x] **Step 1: Investigar el paquete real**
 
 ```bash
 npm --prefix backend view @0xgasless/smart-account 2>&1 | head -40
@@ -408,7 +416,7 @@ De esa lectura, anotar (en un comentario al principio de `gasless.js`, Step 2):
 3. El método para mandar una transacción patrocinada dado `{to, data, value}`, y qué devuelve (¿hash solo, o receipt completo con `.logs`?).
 4. Si existe una forma de calcular la dirección de la Smart Account ANTES de que tenga ninguna transacción propia on-chain (dirección "counterfactual") — la necesita la Tarea 8.
 
-- [ ] **Step 2: Escribir `backend/src/chain/gasless.js`**
+- [x] **Step 2: Escribir `backend/src/chain/gasless.js`**
 
 Usar como punto de partida (AJUSTAR nombres de import/método según lo confirmado en el Step 1 — quedan marcados abajo):
 
@@ -477,7 +485,7 @@ export async function obtenerDireccionSmartAccount() {
 }
 ```
 
-- [ ] **Step 3: Confirmar manualmente que import y config no explotan al cargar**
+- [x] **Step 3: Confirmar manualmente que import y config no explotan al cargar**
 
 ```bash
 node --input-type=module -e "
@@ -490,7 +498,7 @@ Expected: imprime `exports: [ 'enviarSponsored', 'obtenerDireccionSmartAccount' 
 
 Nota: la verificación de que `enviarSponsored` manda de verdad una transacción patrocinada (no solo que el módulo carga) queda diferida a la Tarea 14 (deploy + smoke test real en Fuji) — no hay forma de probar contra el bundler/paymaster real sin credenciales y sin gastar una llamada real.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add backend/package.json backend/package-lock.json backend/src/chain/gasless.js
@@ -508,7 +516,7 @@ git commit -m "feat(backend): integrar Smart Account de 0xgasless para gas patro
 - Consumes: `enviarSponsored({to, data, value})` (Tarea 6), `obtenerScoreRegistry()`/`obtenerEPagare()`/`obtenerMockUSDC()` (Tarea 5) — usa `.interface.encodeFunctionData(...)` y `.getAddress()` de estos, ya no llama a los métodos del contrato directo.
 - Produces: `escribirScoreOnChain(entidadId, score): Promise<{tx_hash}>`, `mintearInstrumentoOnChain({...}): Promise<{contrato_address, tx_hash, token_id}>`, `liquidarPagoStablecoinOnChain({monto, destino}): Promise<{tx_hash}>` — misma firma que hoy, las consume `tools.js` (Tarea 9) sin cambios en el call site.
 
-- [ ] **Step 1: Reescribir el archivo completo**
+- [x] **Step 1: Reescribir el archivo completo**
 
 ```js
 // backend/src/chain/onchain.js
@@ -553,7 +561,7 @@ export async function liquidarPagoStablecoinOnChain({ monto, destino }) {
 }
 ```
 
-- [ ] **Step 2: Smoke check — el módulo importa sin errores**
+- [x] **Step 2: Smoke check — el módulo importa sin errores**
 
 ```bash
 node --input-type=module -e "
@@ -565,7 +573,7 @@ Expected: `exports: [ 'escribirScoreOnChain', 'liquidarPagoStablecoinOnChain', '
 
 (La verificación end-to-end real —que de verdad mintea y lee el evento— queda para la Tarea 14, igual que en la Tarea 6.)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add backend/src/chain/onchain.js
@@ -582,35 +590,36 @@ git commit -m "refactor(backend): las 3 llamadas on-chain van patrocinadas vía 
 - Modify: `contracts/scripts/deploy.js`
 
 **Interfaces:**
-- Consumes: mismo paquete de 0xgasless confirmado en la Tarea 6, Step 1 (acá instalado en `contracts/`, paquete npm distinto pero mismo nombre — `contracts/` y `backend/` son paquetes separados sin workspaces, así que la dependencia se declara en los dos `package.json`).
-- Produces: `obtenerDireccionSmartAccount({signer, chainId, apiKey}): Promise<string>` — lo consume `deploy.js` en este mismo task.
+- Consumes: mismo paquete de 0xgasless que la Tarea 6 confirmó — `@0xgasless/smart-account` (más sus dos dependencias reales no declaradas correctamente por el registro de npm: `viem` y `merkletreejs` — ver `backend/src/chain/gasless.js`, cabecera, para el detalle). `contracts/` y `backend/` son paquetes separados sin workspaces, así que las tres dependencias se declaran también acá.
+- Produces: `obtenerDireccionSmartAccount({signer, chainId, bundlerUrl, paymasterUrl, rpcUrl}): Promise<string>` — lo consume `deploy.js` en este mismo task.
 
-- [ ] **Step 1: Instalar el mismo paquete de 0xgasless en `contracts/`**
+**Nota (post Tarea 6):** la Tarea 6 investigó el SDK real y encontró que la config NO es `apiKey` suelta — son dos URLs completas (`bundlerUrl`/`paymasterUrl`, con la key ya embebida en el path, entregadas por el dashboard de 0xgasless al crear un paymaster para una chain + wallet address). Este task usa esa misma forma de config, ya confirmada — ver `backend/src/chain/gasless.js` como la fuente de verdad de la interfaz real del SDK.
+
+- [x] **Step 1: Instalar el mismo paquete de 0xgasless (+ sus 2 dependencias reales) en `contracts/`**
 
 ```bash
-npm --prefix contracts install <mismo-paquete-confirmado-en-tarea-6>
+npm --prefix contracts install @0xgasless/smart-account viem merkletreejs
 ```
 
-- [ ] **Step 2: Crear `contracts/scripts/lib/smartAccount.js`**
+- [x] **Step 2: Crear `contracts/scripts/lib/smartAccount.js`**
 
 ```js
 // contracts/scripts/lib/smartAccount.js
 //
 // Calcula la dirección de la Smart Account de 0xgasless para el operador que
 // está deployando, para poder transferirle el ownership de los tres
-// contratos justo después del deploy. Misma salvedad que
-// backend/src/chain/gasless.js (Tarea 6): AJUSTAR nombres de import/método
-// contra lo que confirmaste ahí — es el mismo paquete, mismo SDK.
-async function obtenerDireccionSmartAccount({ signer, chainId, apiKey }) {
-  const { createSmartAccountClient } = await import('<mismo-paquete-confirmado-en-tarea-6>');
-  const cuenta = await createSmartAccountClient({ signer, chainId, apiKey });
+// contratos justo después del deploy. Misma config confirmada en la Tarea 6
+// (backend/src/chain/gasless.js): bundlerUrl/paymasterUrl, no apiKey suelta.
+async function obtenerDireccionSmartAccount({ signer, chainId, bundlerUrl, paymasterUrl, rpcUrl }) {
+  const { createSmartAccountClient } = await import('@0xgasless/smart-account');
+  const cuenta = await createSmartAccountClient({ signer, chainId, bundlerUrl, paymasterUrl, rpcUrl });
   return cuenta.getAddress();
 }
 
 module.exports = { obtenerDireccionSmartAccount };
 ```
 
-- [ ] **Step 3: Modificar `contracts/scripts/deploy.js`**
+- [x] **Step 3: Modificar `contracts/scripts/deploy.js`**
 
 Agregar el import al principio (después de los `require` existentes):
 ```js
@@ -620,20 +629,23 @@ const { obtenerDireccionSmartAccount } = require('./lib/smartAccount');
 Reemplazar el bloque que arma `direcciones` (el que quedó de la Tarea 4) por:
 
 ```js
+  const RPC_ENV = { fuji: 'POLFIN_FUJI_RPC_URL', avalanche: 'POLFIN_AVALANCHE_RPC_URL' };
   const CHAIN_ID = { fuji: 43113, avalanche: 43114 };
   const sufijo = hre.network.name.toUpperCase();
-  const apiKey = process.env[`POLFIN_0XGASLESS_API_KEY_${sufijo}`];
+  const bundlerUrl = process.env[`POLFIN_0XGASLESS_BUNDLER_URL_${sufijo}`];
+  const paymasterUrl = process.env[`POLFIN_0XGASLESS_PAYMASTER_URL_${sufijo}`];
   let smartAccountAddress = null;
-  if (apiKey && CHAIN_ID[hre.network.name]) {
+  if (bundlerUrl && paymasterUrl && CHAIN_ID[hre.network.name]) {
     smartAccountAddress = await obtenerDireccionSmartAccount({
-      signer: operador, chainId: CHAIN_ID[hre.network.name], apiKey,
+      signer: operador, chainId: CHAIN_ID[hre.network.name], bundlerUrl, paymasterUrl,
+      rpcUrl: process.env[RPC_ENV[hre.network.name]],
     });
     console.log('Transfiriendo ownership a la Smart Account:', smartAccountAddress);
     await (await scoreRegistry.transferOwnership(smartAccountAddress)).wait();
     await (await ePagare.transferOwnership(smartAccountAddress)).wait();
     await (await mockUsdc.transferOwnership(smartAccountAddress)).wait();
   } else {
-    console.log(`\nOJO: no se transfirió el ownership a ninguna Smart Account (falta POLFIN_0XGASLESS_API_KEY_${sufijo} o la red no es fuji/avalanche). Los contratos quedan owned por la EOA operadora.`);
+    console.log(`\nOJO: no se transfirió el ownership a ninguna Smart Account (faltan POLFIN_0XGASLESS_BUNDLER_URL_${sufijo}/POLFIN_0XGASLESS_PAYMASTER_URL_${sufijo}, o la red no es fuji/avalanche). Los contratos quedan owned por la EOA operadora.`);
   }
 
   const direcciones = {
@@ -647,12 +659,12 @@ Reemplazar el bloque que arma `direcciones` (el que quedó de la Tarea 4) por:
   };
 ```
 
-- [ ] **Step 4: Smoke test contra la red local de Hardhat (sin API key — debe saltear la transferencia)**
+- [x] **Step 4: Smoke test contra la red local de Hardhat (sin bundler/paymaster URL — debe saltear la transferencia)**
 
 Run: `npx hardhat run scripts/deploy.js --network hardhat` (desde `contracts/`)
-Expected: imprime el mensaje "OJO: no se transfirió..." (no hay `POLFIN_0XGASLESS_API_KEY_HARDHAT`), y `contracts/deployments/hardhat.json` tiene `"smartAccount": null`.
+Expected: imprime el mensaje "OJO: no se transfirió..." (no hay `POLFIN_0XGASLESS_BUNDLER_URL_HARDHAT`/`POLFIN_0XGASLESS_PAYMASTER_URL_HARDHAT`), y `contracts/deployments/hardhat.json` tiene `"smartAccount": null`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/package.json contracts/package-lock.json contracts/scripts/lib/smartAccount.js contracts/scripts/deploy.js
@@ -670,7 +682,7 @@ git commit -m "feat(contracts): transferir ownership a la Smart Account de 0xgas
 - Consumes: `esRedReal`, `redLabel`, `explorerUrl` de `redes.js` (Tarea 2).
 - Produces: los returns de `generarInstrumento`, `registrarScoreOnChain`, `ejecutarPagoStablecoin` ganan los campos `red_label: string`, `explorer_url: string|null`, y (solo `generarInstrumento`) `tx_explorer_url: string|null`, `nft_explorer_url: string|null` — los consume `server.js` (Tarea 10, indirectamente vía el pipeline) y el frontend (Tarea 12).
 
-- [ ] **Step 1: Agregar el import y el helper de red**
+- [x] **Step 1: Agregar el import y el helper de red**
 
 En `backend/src/agente/tools.js`, después de la línea `import { escribirScoreOnChain, mintearInstrumentoOnChain, liquidarPagoStablecoinOnChain } from '../chain/onchain.js';` (línea 15), agregar:
 
@@ -691,7 +703,7 @@ const redActual = () => {
 };
 ```
 
-- [ ] **Step 2: Reescribir el caso `generarInstrumento`**
+- [x] **Step 2: Reescribir el caso `generarInstrumento`**
 
 Reemplazar el bloque completo del `case 'generarInstrumento':` (líneas 196-237) por:
 
@@ -745,7 +757,7 @@ Reemplazar el bloque completo del `case 'generarInstrumento':` (líneas 196-237)
     }
 ```
 
-- [ ] **Step 3: Reescribir el caso `registrarScoreOnChain`**
+- [x] **Step 3: Reescribir el caso `registrarScoreOnChain`**
 
 Reemplazar el bloque completo del `case 'registrarScoreOnChain':` (líneas 239-254) por:
 
@@ -770,7 +782,7 @@ Reemplazar el bloque completo del `case 'registrarScoreOnChain':` (líneas 239-2
     }
 ```
 
-- [ ] **Step 4: Reescribir el caso `ejecutarPagoStablecoin`**
+- [x] **Step 4: Reescribir el caso `ejecutarPagoStablecoin`**
 
 Reemplazar el bloque completo del `case 'ejecutarPagoStablecoin':` (líneas 256-270) por:
 
@@ -794,7 +806,7 @@ Reemplazar el bloque completo del `case 'ejecutarPagoStablecoin':` (líneas 256-
     }
 ```
 
-- [ ] **Step 5: Smoke check en modo mock (sin ninguna credencial)**
+- [x] **Step 5: Smoke check en modo mock (sin ninguna credencial)**
 
 ```bash
 node --input-type=module -e "
@@ -808,7 +820,7 @@ const { ejecutarTool } = await import('./backend/src/agente/tools.js');
 
 *(Nota para quien implemente: si armar una DB descartable en memoria acá resulta más fricción que valor, alcanza con levantar el backend en modo mock (`npm run dev:api` con `POLFIN_CHAIN_MODE=mock` o sin setear la variable) y pegarle a `POST /api/agente/evaluar-credito` con un crédito de prueba contra la DB seedeada — confirmar en la respuesta que `instrumento.red === 'mock'`, `instrumento.red_label` y `instrumento.explorer_url === null` están presentes.)*
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/agente/tools.js
@@ -827,7 +839,7 @@ git commit -m "feat(agente): red 'mock' (antes 'fuji-mock') + explorer_url en la
 - Consumes: `esRedReal`, `redLabel`, `explorerUrl` de `redes.js` (Tarea 2).
 - Produces: `/api/onchain/score/:id` gana `red_label`; `/api/instrumentos` y `/api/instrumentos/:id` ganan `red_label`, `explorer_url`, `tx_explorer_url`, `nft_explorer_url` en cada fila — los consume el frontend (Tarea 12).
 
-- [ ] **Step 1: Agregar el import**
+- [x] **Step 1: Agregar el import**
 
 Cerca de los otros imports al principio de `server.js` (buscar el import de `ejecutarTool` o `calcularScore` para ubicar el bloque de imports), agregar:
 
@@ -835,7 +847,7 @@ Cerca de los otros imports al principio de `server.js` (buscar el import de `eje
 import { esRedReal, redLabel, explorerUrl } from './chain/redes.js';
 ```
 
-- [ ] **Step 2: Actualizar `GET /api/onchain/score/:id`**
+- [x] **Step 2: Actualizar `GET /api/onchain/score/:id`**
 
 Reemplazar las líneas 427-443:
 
@@ -884,7 +896,7 @@ por:
 
 (Nota: `contrato_address` en esta respuesta ya era siempre `null` salvo cuando venía de `process.env.POLFIN_SCORE_REGISTRY_ADDRESS`, que dejó de existir en la Tarea 5 — la vista de perfil/verificar no lo usa para nada crítico, solo lo muestra si está presente.)
 
-- [ ] **Step 3: Agregar el helper de fila a `GET /api/instrumentos` y `GET /api/instrumentos/:id`**
+- [x] **Step 3: Agregar el helper de fila a `GET /api/instrumentos` y `GET /api/instrumentos/:id`**
 
 Reemplazar las líneas 489-519:
 
@@ -972,7 +984,7 @@ app.get('/api/instrumentos/:id', (req, res) => {
 });
 ```
 
-- [ ] **Step 4: Verificación manual con el server corriendo en modo mock**
+- [x] **Step 4: Verificación manual con el server corriendo en modo mock**
 
 ```bash
 npm run seed
@@ -984,7 +996,7 @@ curl -s http://localhost:4000/api/instrumentos | head -c 400
 ```
 Expected: cada objeto trae `"red":"mock"` (después de reseedear — el seed también genera instrumentos, revisar que no haya quedado ningún `'fuji-mock'` viejo en el dataset sembrado; si `seed.js` inserta filas de `instrumentos` a mano con `'fuji-mock'` hardcodeado, ajustarlo a `'mock'` ahí también como parte de este step), `"red_label":"Avalanche (modo demo)"`, `"explorer_url":null`. Frenar el server (`Ctrl+C`) al terminar.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/server.js
@@ -1002,7 +1014,7 @@ git commit -m "feat(backend): explorer_url/red_label en los endpoints de instrum
 **Interfaces:**
 - Produces: `Instrumento` con `red_label`, `explorer_url`, `tx_explorer_url`, `nft_explorer_url`; `OnchainScore` con `red_label` y `chain_mode`/`red` admitiendo `"avalanche"`. Los consumen los componentes de la Tarea 12.
 
-- [ ] **Step 1: Actualizar el tipo `Instrumento`**
+- [x] **Step 1: Actualizar el tipo `Instrumento`**
 
 Reemplazar las líneas 62-70:
 
@@ -1036,7 +1048,7 @@ export type Instrumento = {
 };
 ```
 
-- [ ] **Step 2: Actualizar el tipo `OnchainScore`**
+- [x] **Step 2: Actualizar el tipo `OnchainScore`**
 
 Reemplazar las líneas 133-144:
 
@@ -1073,12 +1085,12 @@ export type OnchainScore = {
 };
 ```
 
-- [ ] **Step 3: Verificar que compila**
+- [x] **Step 3: Verificar que compila**
 
 Run: `npm --prefix frontend run build` (o `npx tsc --noEmit` dentro de `frontend/` si preferís algo más rápido que el build completo)
 Expected: falla en este punto — los componentes de la Tarea 12 todavía usan `data.es_real ? "Fuji (testnet)" : ...` y `red === "fuji"`, que siguen siendo válidos con estos tipos (no rompen), así que en realidad debería compilar igual. Si el build falla, revisar el mensaje de error antes de seguir — no debería haber ningún error de tipos en este punto porque solo agregamos campos opcionales.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/lib/api.ts
@@ -1098,7 +1110,7 @@ git commit -m "feat(frontend): tipos para red_label/explorer_url y modo avalanch
 **Interfaces:**
 - Consumes: `Instrumento.red_label/explorer_url/tx_explorer_url/nft_explorer_url` y `OnchainScore.red_label` (Tarea 11).
 
-- [ ] **Step 1: `perfil.tsx` — reemplazar los 3 usos de `es_real`/red hardcodeada**
+- [x] **Step 1: `perfil.tsx` — reemplazar los 3 usos de `es_real`/red hardcodeada**
 
 Línea 114, reemplazar:
 ```tsx
@@ -1133,7 +1145,7 @@ por:
             {!chain?.es_real && <span className="block mt-1 text-tenue/70">(Modo demo: registro simulado. Con POLFIN_CHAIN_MODE=fuji o avalanche el QR lleva a la transacción real en Snowtrace.)</span>}
 ```
 
-- [ ] **Step 2: `verificar/[id]/page.tsx`**
+- [x] **Step 2: `verificar/[id]/page.tsx`**
 
 Línea 51, reemplazar:
 ```tsx
@@ -1155,7 +1167,7 @@ por:
                     (Fuji o mainnet) activada, este código lleva a la transacción verificable en Snowtrace.
 ```
 
-- [ ] **Step 3: `documento.tsx` — versión PDF (función `descargarPdf`)**
+- [x] **Step 3: `documento.tsx` — versión PDF (función `descargarPdf`)**
 
 Línea 129, reemplazar:
 ```js
@@ -1184,7 +1196,7 @@ por:
   if (i.token_id != null) linea(`NFT: token #${i.token_id}`, { size: 9, gap: 5 });
 ```
 
-- [ ] **Step 4: `documento.tsx` — versión JSX (componente `EPagare`)**
+- [x] **Step 4: `documento.tsx` — versión JSX (componente `EPagare`)**
 
 Reemplazar las líneas 193-218:
 
@@ -1248,7 +1260,7 @@ por:
             )}
 ```
 
-- [ ] **Step 5: `aprobaciones.tsx`**
+- [x] **Step 5: `aprobaciones.tsx`**
 
 Línea 13, reemplazar:
 ```tsx
@@ -1278,12 +1290,12 @@ por:
                         )})</>
 ```
 
-- [ ] **Step 6: Build de verificación**
+- [x] **Step 6: Build de verificación**
 
 Run: `npm --prefix frontend run build`
 Expected: build exitoso, sin errores de TypeScript ni de lint.
 
-- [ ] **Step 7: Verificación visual manual**
+- [x] **Step 7: Verificación visual manual**
 
 ```bash
 npm run seed
@@ -1295,7 +1307,7 @@ Abrir `http://localhost:3000`, entrar al perfil de cualquier entidad con score (
 - Abrir un e-pagaré existente (desde Aprobaciones o el perfil de un deudor) y confirmar que el bloque "Registro on-chain" muestra `Avalanche (modo demo)` y el contrato/tx NO son links clickeables (son `<span>`, no `<a>`).
 Frenar el server (`Ctrl+C`) al terminar.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/components/perfil.tsx frontend/app/verificar/[id]/page.tsx frontend/components/documento.tsx frontend/components/aprobaciones.tsx
@@ -1312,7 +1324,7 @@ git commit -m "feat(frontend): consumir red_label/explorer_url del backend en ve
 
 **Interfaces:** ninguna — solo texto.
 
-- [ ] **Step 1: `README.md`**
+- [x] **Step 1: `README.md`**
 
 Buscar la línea:
 ```
@@ -1325,7 +1337,7 @@ Reemplazar por:
   o `avalanche`) — ver `contracts/README` para el flujo de deploy.
 ```
 
-- [ ] **Step 2: `CLAUDE.md` — sección "Key env vars"**
+- [x] **Step 2: `CLAUDE.md` — sección "Key env vars"**
 
 Buscar el bloque:
 ```
@@ -1346,15 +1358,17 @@ Reemplazar por:
 backend base URL), `POLFIN_CHAIN_MODE` (`mock` default | `fuji` | `avalanche`),
 `POLFIN_FUJI_RPC_URL` / `POLFIN_AVALANCHE_RPC_URL`,
 `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` / `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE`,
-`POLFIN_0XGASLESS_API_KEY_FUJI` / `POLFIN_0XGASLESS_API_KEY_AVALANCHE` (gas
-patrocinado vía la Smart Account de 0xgasless — ver
+`POLFIN_0XGASLESS_BUNDLER_URL_FUJI` / `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI` /
+`POLFIN_0XGASLESS_BUNDLER_URL_AVALANCHE` /
+`POLFIN_0XGASLESS_PAYMASTER_URL_AVALANCHE` (gas patrocinado vía la Smart
+Account de 0xgasless — ver
 `docs/superpowers/specs/2026-08-01-avalanche-gasless-design.md`). Las
 direcciones de los 3 contratos ya no van en el `.env`: se leen de
 `contracts/deployments/{fuji|avalanche}.json`, generado por
 `npm run contracts:deploy:fuji` / `:avalanche`.
 ```
 
-- [ ] **Step 3: `CLAUDE.md` — sección "The agent", bullet de `tools.js`**
+- [x] **Step 3: `CLAUDE.md` — sección "The agent", bullet de `tools.js`**
 
 Buscar:
 ```
@@ -1371,7 +1385,7 @@ Reemplazar por:
   `mock` (default) keeps the old simulated behavior.
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md CLAUDE.md
@@ -1384,9 +1398,9 @@ git commit -m "docs: reflejar el on-chain real (Fuji+mainnet, gas patrocinado po
 
 **No es código — es la primera puesta en marcha real, con la red gratuita.**
 
-- [ ] **Step 1:** Crear el segundo proyecto en dashboard.0xgasless.com para Fuji testnet (chainId 43113), copiar su API key a `POLFIN_0XGASLESS_API_KEY_FUJI` en `backend/.env` y `contracts/.env`.
-- [ ] **Step 2:** Generar una wallet operadora descartable para Fuji (ej. `node --input-type=module -e "import {Wallet} from 'ethers'; const w = Wallet.createRandom(); console.log('address:', w.address); console.log('private key (guardala vos, no la pego yo en ningún lado):', w.privateKey);"`), fondearla con AVAX de testnet desde el faucet de Avalanche, y poner su private key en `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` en ambos `.env`.
-- [ ] **Step 3:** Cargar el gas tank del paymaster del proyecto Fuji en el dashboard de 0xgasless.
+- [ ] **Step 1:** Generar una wallet operadora descartable para Fuji (ej. `node --input-type=module -e "import {Wallet} from 'ethers'; const w = Wallet.createRandom(); console.log('address:', w.address); console.log('private key (guardala vos, no la pego yo en ningún lado):', w.privateKey);"`), fondearla con AVAX de testnet desde el faucet de Avalanche, y poner su private key en `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` en ambos `.env`.
+- [ ] **Step 2:** En dashboard.0xgasless.com crear un paymaster nuevo eligiendo la chain **Avalanche Fuji** y pegando la wallet address generada en el Step 1. Copiar las dos URLs que entrega (bundler y paymaster) a `POLFIN_0XGASLESS_BUNDLER_URL_FUJI` / `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI` en `backend/.env` y `contracts/.env`.
+- [ ] **Step 3:** Cargar el gas tank de ese paymaster en el dashboard de 0xgasless.
 - [ ] **Step 4:** `npm run contracts:deploy:fuji` — confirmar que imprime la Smart Account y transfiere el ownership de los 3 contratos (no el mensaje "OJO: no se transfirió...").
 - [ ] **Step 5:** Con `POLFIN_CHAIN_MODE=fuji` en `backend/.env`, levantar el backend (`npm run dev:api`) y disparar un crédito de prueba de punta a punta (UI o `POST /api/agente/evaluar-credito`).
 - [ ] **Step 6:** Confirmar en `testnet.snowtrace.io` que la transacción de `generarInstrumento` es real, que el NFT se minteó, y — clave — que la wallet operadora **no gastó AVAX propio** (el gas lo pagó el paymaster).
@@ -1398,8 +1412,8 @@ git commit -m "docs: reflejar el on-chain real (Fuji+mainnet, gas patrocinado po
 
 **Requiere OK explícito del usuario antes del Step 3 (gasta AVAX real).**
 
-- [ ] **Step 1:** Copiar la API key de mainnet ya creada en el dashboard a `POLFIN_0XGASLESS_API_KEY_AVALANCHE` en ambos `.env`.
-- [ ] **Step 2:** Poner la private key de la wallet operadora real (fondeada por el usuario con AVAX real) en `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE` en ambos `.env`, y cargar el gas tank del paymaster de ese proyecto en el dashboard.
+- [ ] **Step 1:** Poner la private key de la wallet operadora real (fondeada por el usuario con AVAX real) en `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE` en ambos `.env`.
+- [ ] **Step 2:** En dashboard.0xgasless.com crear (o confirmar que ya existe) un paymaster para la chain **Avalanche** con la wallet address del operador real del Step 1. Copiar las dos URLs (bundler y paymaster) a `POLFIN_0XGASLESS_BUNDLER_URL_AVALANCHE` / `POLFIN_0XGASLESS_PAYMASTER_URL_AVALANCHE` en ambos `.env`, y cargar el gas tank de ese paymaster en el dashboard.
 - [ ] **Step 3 (checkpoint — pedir confirmación antes de correr esto):** `npm run contracts:deploy:avalanche`.
 - [ ] **Step 4:** Repetir los Steps 5-7 de la Tarea 14 pero con `POLFIN_CHAIN_MODE=avalanche` y verificando en `snowtrace.io` (sin `testnet.`).
 

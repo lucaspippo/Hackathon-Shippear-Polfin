@@ -80,8 +80,10 @@ Esto cambia el spec anterior en dos ejes:
   `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE`.
 - `scripts/deploy.js`: deploya los tres contratos normalmente (owner = la EOA
   operadora, como hoy), después calcula la dirección de la Smart Account de
-  0xgasless correspondiente a esa EOA en esa red (usando el API key
-  `POLFIN_0XGASLESS_API_KEY_FUJI` / `_AVALANCHE` según corresponda) y llama
+  0xgasless correspondiente a esa EOA en esa red (usando el bundler/paymaster
+  `POLFIN_0XGASLESS_BUNDLER_URL_FUJI`+`POLFIN_0XGASLESS_PAYMASTER_URL_FUJI` /
+  `_AVALANCHE` según corresponda — no una API key suelta, ver nota de la
+  Tarea 6 en Open Questions) y llama
   `transferOwnership(smartAccountAddress)` en los tres contratos — así las
   llamadas `onlyOwner` posteriores, que van a llegar patrocinadas desde la
   Smart Account y no desde la EOA, siguen siendo válidas. Escribe direcciones
@@ -205,16 +207,23 @@ Ya reflejadas en `backend/.env.example` y `contracts/.env.example`:
 - `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` / `POLFIN_OPERATOR_PRIVATE_KEY_AVALANCHE`
   — reemplazan a `POLFIN_OPERATOR_PRIVATE_KEY` (una sola, sin sufijo). Dos
   wallets distintas, nunca la misma clave en las dos.
-- `POLFIN_0XGASLESS_API_KEY_FUJI` / `POLFIN_0XGASLESS_API_KEY_AVALANCHE` —
-  nuevas, un proyecto de 0xgasless por red.
+- `POLFIN_0XGASLESS_BUNDLER_URL_FUJI` / `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI`
+  / `POLFIN_0XGASLESS_BUNDLER_URL_AVALANCHE` /
+  `POLFIN_0XGASLESS_PAYMASTER_URL_AVALANCHE` — nuevas, un paymaster de
+  0xgasless por red. Corrección post-implementación (Tarea 6): el SDK real
+  no usa una API key suelta — el dashboard entrega dos URLs completas (con
+  la key ya embebida en el path) al crear un paymaster para una chain y una
+  wallet address específicas.
 - `POLFIN_SCORE_REGISTRY_ADDRESS` / `POLFIN_EPAGARE_ADDRESS` /
   `POLFIN_MOCK_USDC_ADDRESS` — **se eliminan** del `.env`; ahora se leen de
   `contracts/deployments/{red}.json`.
 
 ## Operational setup (no es código — lo hace el usuario)
 
-- Crear el proyecto de 0xgasless para Fuji testnet en el dashboard (el de
-  mainnet ya existe) y cargar su API key en `POLFIN_0XGASLESS_API_KEY_FUJI`.
+- Crear el paymaster de 0xgasless para Fuji testnet en el dashboard (el de
+  mainnet ya existe), eligiendo la chain Avalanche Fuji y la wallet address
+  del operador de esa red, y cargar las dos URLs resultantes en
+  `POLFIN_0XGASLESS_BUNDLER_URL_FUJI` / `POLFIN_0XGASLESS_PAYMASTER_URL_FUJI`.
 - Generar/obtener dos private keys de wallet operadora: una descartable para
   Fuji, una real para mainnet. Nunca pegar la private key en el chat con el
   asistente.
