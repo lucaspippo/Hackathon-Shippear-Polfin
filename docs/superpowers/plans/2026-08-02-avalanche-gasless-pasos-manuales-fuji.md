@@ -24,6 +24,21 @@ npm run seed
 
 ## Paso 1 — Crear la wallet operadora descartable
 
+Dos formas, elegí una — **ambas terminan en lo mismo: una address + una
+private key que solo vas a usar para este proyecto.**
+
+**Opción A — con MetaMask (recomendada, es la que funcionó en la práctica):**
+
+1. En la extensión de MetaMask: menú de cuentas → **"Agregar cuenta"** →
+   creá una cuenta nueva, dedicada solo a este proyecto (no reutilices una
+   que ya tenga otras cosas).
+2. Para exportar la private key: `⋮` (los tres puntos) en esa cuenta →
+   **"Detalles de la cuenta"** → **"Mostrar clave privada"** → confirmá con
+   tu contraseña de MetaMask.
+3. Copiá la address (arriba de todo) y la private key.
+
+**Opción B — generándola con un script (offline, sin ninguna extensión):**
+
 ```bash
 node --input-type=module -e "
 import {Wallet} from 'ethers';
@@ -33,19 +48,33 @@ console.log('private key:', w.privateKey);
 "
 ```
 
-Guardá los dos valores en un lugar tuyo (gestor de contraseñas, `.txt` fuera
-del repo). Es una wallet descartable de testnet, pero tratala con el mismo
-cuidado que una real.
+**Cualquiera sea la opción:** guardá los dos valores en un lugar tuyo
+(gestor de contraseñas, `.txt` fuera del repo) — nunca en el chat de un
+asistente ni en ningún archivo del repo que no sea `.env` (gitignoreado).
+Es una wallet descartable de testnet, pero tratala con el mismo cuidado que
+una real.
 
 ## Paso 2 — Fondearla con AVAX de testnet (gratis)
 
-1. Andá a `https://core.app/tools/testnet-faucet/` (o `https://faucet.avax.network`).
-2. Elegí la red **Fuji (C-Chain)**.
-3. Pegá la `address` del Paso 1 y pedí los AVAX de testnet.
+**Ruta que funcionó de verdad (probada):** `https://build.avax.network/` —
+creá una cuenta, conectá la wallet del Paso 1 (si usaste la Opción A de
+MetaMask, es literalmente la misma extensión) y pedí el faucet de **Testnet
+AVAX · C-Chain · Chain 43113**. No pide login social ni coupon.
+
+**Rutas que NO funcionaron, para no perder tiempo repitiéndolas:**
+- `https://core.app/tools/testnet-faucet/` — pide un coupon **o** que la
+  address ya tenga AVAX en **mainnet** (>0). Si conseguís un coupon del
+  hackathon, esta sirve; si no, saltearla.
+- `https://faucets.chain.link/fuji` — el drip de AVAX nativo ahí pide tener
+  al menos 1 LINK en Ethereum mainnet (mismo tipo de gate anti-bot). El
+  drip de **LINK** de Fuji que sí te puede dar sin ese requisito **no sirve
+  para esto**: LINK es un token ERC-20 aparte, el gas en Fuji se paga en
+  AVAX nativo, no en LINK.
 
 Esto lo necesitás porque la wallet operadora es la que firma el **deploy**
 de los contratos (eso lo paga ella, normal, no patrocinado) — el gasless
-solo aplica a las 3 tools del agente después del deploy.
+solo aplica a las 3 tools del agente después del deploy. Con 0.5 AVAX de
+testnet alcanza de sobra.
 
 ## Paso 3 — Crear el paymaster en 0xgasless
 
