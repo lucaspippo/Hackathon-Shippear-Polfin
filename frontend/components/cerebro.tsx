@@ -170,6 +170,7 @@ export function Cerebro({
   // re-centrar + animar cuando cambia el foco (el recorrido del agente)
   const enfocar = useCallback(() => {
     if (!datos) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPulso((p) => p + 1);
     let intentos = 0;
     const timer = setInterval(() => {
@@ -184,6 +185,7 @@ export function Cerebro({
     return () => clearInterval(timer);
   }, [datos, focal]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => enfocar(), [enfocar]);
 
   const redCompleta = () => grafoRef.current?.zoomToFit(700, 60);

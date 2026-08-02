@@ -27,6 +27,7 @@ export function Perfil({
 
   const esYo = entidadId === rol.entidadId;
   const [origin, setOrigin] = useState("");
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setOrigin(window.location.origin); }, []);
 
   // Relaciones: contrapartes distintas como comprador (deudor) y vendedor (acreedor).

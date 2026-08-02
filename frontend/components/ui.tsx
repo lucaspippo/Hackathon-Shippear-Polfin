@@ -38,6 +38,7 @@ export function usePersistente(clave: string, porDefecto: boolean) {
   const [valor, setValor] = useState(porDefecto);
   useEffect(() => {
     const guardado = window.localStorage.getItem(clave);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (guardado !== null) setValor(guardado === "1");
   }, [clave]);
   const set = (v: boolean) => {

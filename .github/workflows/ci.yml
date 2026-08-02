@@ -1,0 +1,111 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  # Decide qué jobs corren según qué carpetas tocó el push/PR.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      contracts: ${{ steps.filter.outputs.contracts }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            contracts:
+              - 'contracts/**'
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Instalar dependencias
+        working-directory: backend
+        run: npm ci
+      - name: Seedear la DB (valida schema + seed determinístico)
+        working-directory: backend
+        run: npm run seed
+      - name: Levantar el server y chequear /api/health
+        working-directory: backend
+        env:
+          LLM_MODE: mock
+          POLFIN_MONITOR_INTERVAL: '0'
+        run: |
+          node src/server.js &
+          SERVER_PID=$!
+          ok=""
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:4000/api/health -o /tmp/health.json; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          cat /tmp/health.json || true
+          kill "$SERVER_PID" 2>/dev/null || true
+          [ -n "$ok" ] || (echo "el server nunca respondió" && exit 1)
+          grep -q '"ok":true' /tmp/health.json
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependencias
+        working-directory: frontend
+        run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+        run: npm run build
+
+  contracts:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: contracts/package-lock.json
+      - name: Instalar dependencias
+        working-directory: contracts
+        run: npm ci
+      - name: Compilar contratos
+        working-directory: contracts
+        run: npx hardhat compile
+      - name: Correr tests
+        working-directory: contracts
+        run: npx hardhat test
