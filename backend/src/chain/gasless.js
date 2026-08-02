@@ -71,17 +71,21 @@
 //     que la Smart Account tenga ninguna tx propia on-chain, la usa la
 //     Tarea 8 para transferOwnership post-deploy.
 //
-// Lo que queda genuinamente sin confirmar (no hay forma de probarlo sin
-// credenciales reales de dashboard.0xgasless.com — diferido a la Tarea 14):
-//   - El formato exacto de bundlerUrl/paymasterUrl para Avalanche Fuji/mainnet
-//     (el único ejemplo real visto en el propio código fuente del SDK es
-//     para Base Sepolia, chainId 84532) — se asume que dashboard.0xgasless.com
-//     entrega URLs con la misma forma para cualquier red soportada.
-//   - Si 0xgasless soporta Avalanche C-Chain (43114) y Fuji (43113) en su
-//     bundler/paymaster hospedado — el SDK en sí es agnóstico de red (usa
-//     viem/chains para resolver el chainId), pero el servicio hospedado de
-//     0xgasless podría no tener bundler/paymaster desplegado en esas redes.
-//     Se confirma recién con las URLs reales del dashboard (Tarea 14).
+// CONFIRMADO EN FUJI (probado en vivo contra contracts/deployments/fuji.json,
+// 2026-08-02): la resolución de la Smart Account falla — `getAddressForCounter
+// FactualAccount` devuelve "0x" (sin datos), tanto en el deploy (transferOwnership
+// se saltea, ver contracts/scripts/deploy.js) como en runtime. O sea: el factory
+// de 0xgasless no está deployado en Avalanche Fuji hoy (43113), pese a que las
+// URLs de bundler/paymaster del dashboard son válidas y responden. No se probó
+// en Avalanche C-Chain (43114) — puede que ahí sí ande.
+//
+// Por eso `enviarSponsored` ahora hace fallback: si la resolución/envío
+// patrocinado falla, manda la tx directo con la wallet operadora (paga su
+// propio gas — gratis en testnet). Esto encastra con el propio deploy.js: si
+// la Smart Account no se pudo resolver, el owner de los 3 contratos quedó
+// siendo la EOA operadora, así que la tx directa igual pasa el `onlyOwner`.
+// Si 0xgasless arregla el soporte de Fuji más adelante, este fallback deja de
+// activarse solo (la rama sponsored vuelve a andar) sin tocar código.
 import { createSmartAccountClient, PaymasterMode } from '@0xgasless/smart-account';
 import { obtenerWalletOperador, obtenerRedActiva } from './provider.js';
 
@@ -116,23 +120,39 @@ async function obtenerSmartAccount() {
 
 // Manda `data` (calldata ya codificado) a `to`, patrocinado por el paymaster
 // de la red activa. Devuelve el hash y, si está disponible, el receipt
-// completo (lo necesita mintearInstrumentoOnChain para leer el evento).
+// completo (lo necesita mintearInstrumentoOnChain para leer el evento). Si el
+// patrocinio de 0xgasless falla (ver nota arriba — confirmado que pasa hoy en
+// Fuji), cae a mandar la tx directo con la wallet operadora.
 export async function enviarSponsored({ to, data, value = 0n }) {
-  const cuenta = await obtenerSmartAccount();
-  const userOp = await cuenta.sendTransaction(
-    { to, data, value },
-    { paymasterServiceData: { mode: PaymasterMode.SPONSORED } },
-  );
-  if (userOp.error) {
-    throw new Error(`0xgasless rechazó el userOp: ${userOp.error.message}`);
+  try {
+    const cuenta = await obtenerSmartAccount();
+    const userOp = await cuenta.sendTransaction(
+      { to, data, value },
+      { paymasterServiceData: { mode: PaymasterMode.SPONSORED } },
+    );
+    if (userOp.error) {
+      throw new Error(`0xgasless rechazó el userOp: ${userOp.error.message}`);
+    }
+    const userOpReceipt = await userOp.wait();
+    if (userOpReceipt.success === 'false') {
+      throw new Error(`userOp de 0xgasless falló on-chain: ${userOpReceipt.reason || 'sin razón informada'}`);
+    }
+    const receipt = userOpReceipt.receipt ?? null;
+    const tx_hash = receipt?.transactionHash ?? receipt?.hash ?? userOpReceipt.userOpHash;
+    return { tx_hash, receipt };
+  } catch (e) {
+    console.warn(`[gasless] patrocinio de 0xgasless falló (${e.message}) — mando la tx directo con la wallet operadora.`);
+    return enviarDirecto({ to, data, value });
   }
-  const userOpReceipt = await userOp.wait();
-  if (userOpReceipt.success === 'false') {
-    throw new Error(`userOp de 0xgasless falló on-chain: ${userOpReceipt.reason || 'sin razón informada'}`);
-  }
-  const receipt = userOpReceipt.receipt ?? null;
-  const tx_hash = receipt?.transactionHash ?? receipt?.hash ?? userOpReceipt.userOpHash;
-  return { tx_hash, receipt };
+}
+
+// Fallback sin patrocinio: la wallet operadora paga su propio gas. Solo entra
+// en juego cuando `enviarSponsored` no pudo resolver/mandar el userOp.
+async function enviarDirecto({ to, data, value }) {
+  const wallet = obtenerWalletOperador();
+  const tx = await wallet.sendTransaction({ to, data, value });
+  const receipt = await tx.wait();
+  return { tx_hash: receipt.hash, receipt };
 }
 
 // Dirección de la Smart Account de la red dada — la usa contracts/scripts/deploy.js
