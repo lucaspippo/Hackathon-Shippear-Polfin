@@ -84,7 +84,23 @@ diferir un poco de esta descripción):
 1. Entrá a `https://dashboard.0xgasless.com` y creá cuenta / iniciá sesión.
 2. Creá un paymaster nuevo, chain **Avalanche Fuji**.
 3. Pegá la `address` de la wallet operadora (Paso 1) como wallet autorizada.
-4. El dashboard te da **dos URLs** (bundler y paymaster) — guardalas.
+4. El dashboard te da **API key**, **Paymaster URL** y **Creator address**
+   — OJO, **NO te da una "Bundler URL" explícita** (a diferencia de lo que
+   asumía una versión anterior de este doc). Verificado en la práctica:
+
+   - **Paymaster URL**: la que te dio el dashboard tal cual, con forma
+     `https://paymaster.0xgasless.com/v1/<chainId>/rpc/<tu-key>`.
+   - **Bundler URL**: **NO lleva key de proyecto** — es un endpoint
+     compartido por chain: `https://bundler.0xgasless.com/<chainId>`. Para
+     Fuji (`chainId=43113`): `https://bundler.0xgasless.com/43113`.
+     Confirmado con una llamada de solo lectura
+     (`eth_supportedEntryPoints`), que devolvió el EntryPoint estándar de
+     ERC-4337 (`0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789`):
+     ```bash
+     curl -s -X POST "https://bundler.0xgasless.com/43113" \
+       -H "Content-Type: application/json" \
+       -d '{"jsonrpc":"2.0","id":1,"method":"eth_supportedEntryPoints","params":[]}'
+     ```
 5. **Cargá el gas tank** del paymaster con fondos de testnet — sin esto el
    patrocinio falla aunque todo lo demás esté bien.
 
