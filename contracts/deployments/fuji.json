@@ -1,0 +1,9 @@
+{
+  "network": "fuji",
+  "operador": "0x3a9bB3FBB4448188d6E38d2Bb6a456Ac2E8B357A",
+  "smartAccount": null,
+  "scoreRegistry": "0x2d6c0965ec24e1A87FdCdd0667ea150690f36492",
+  "ePagare": "0xb14f63d645ABF6150CEae85D9Db1C32F73dD4D80",
+  "mockUsdc": "0xfC3e7FF3a661e3DeFF389e4D1805212e704f235b",
+  "deployedAt": "2026-08-02T15:58:34.722Z"
+}

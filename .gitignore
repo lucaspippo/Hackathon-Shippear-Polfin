@@ -29,4 +29,7 @@ backend/data/*.db-shm
 # contracts (Hardhat build output — see contracts/ package)
 contracts/artifacts/
 contracts/cache/
-contracts/deployments/
+# direcciones de deploy: sin secretos (solo addresses públicas), el backend
+# las necesita para operar en fuji/avalanche — se commitean a propósito.
+contracts/deployments/*
+!contracts/deployments/fuji.json
