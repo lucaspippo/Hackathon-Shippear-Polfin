@@ -107,6 +107,41 @@ export function Etiqueta({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Copia `valor` al portapapeles y confirma con un check breve (1.5s). Usarlo
+// junto a hashes/direcciones on-chain — son largos, feos de transcribir a mano.
+export function BotonCopiar({ valor, className = "" }: { valor: string; className?: string }) {
+  const [copiado, setCopiado] = useState(false);
+  const copiar = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(valor);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1500);
+    } catch {
+      // portapapeles bloqueado (permisos/http sin TLS): sin feedback, no rompe nada más.
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copiar}
+      title={copiado ? "¡Copiado!" : "Copiar"}
+      aria-label="Copiar"
+      className={`inline-flex size-5 shrink-0 items-center justify-center rounded-md text-tenue transition-colors hover:bg-white/8 hover:text-brand ${className}`}
+    >
+      {copiado ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden><path d="M5 12.5 10 17l9-10" stroke="var(--color-brand)" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      ) : (
+        <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden>
+          <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.7" fill="none" />
+          <path d="M5 16V6a2 2 0 0 1 2-2h10" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinecap="round" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export function VerElPorque({ onClick, texto = "Ver el porqué" }: { onClick?: () => void; texto?: string }) {
   return (
     <button

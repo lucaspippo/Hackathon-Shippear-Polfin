@@ -10,7 +10,7 @@ import {
 } from "@/lib/api";
 import type { Rol, Vista } from "@/lib/roles";
 import type { DocRef } from "@/components/documento";
-import { Carta, Etiqueta, Pill, Punto, useApi, tonoRiesgo } from "@/components/ui";
+import { BotonCopiar, Carta, Etiqueta, Pill, Punto, useApi, tonoRiesgo } from "@/components/ui";
 import { Avatar } from "@/components/avatar";
 
 const ROL_LABEL: Record<string, string> = {
@@ -145,10 +145,20 @@ export function Perfil({
                 <span className="num truncate text-tinta">{chain.contrato_address}</span>
               </div>
             )}
-            <div className="flex justify-between gap-3">
-              <span className="shrink-0 text-tenue">Tx</span>
-              <span className="num truncate text-tinta">{chain?.tx_hash ?? "…"}</span>
-            </div>
+            {chain?.tx_hash && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="shrink-0 text-tenue">Tx</span>
+                <span className="flex min-w-0 items-center gap-1">
+                  {chain.explorer_url ? (
+                    <a href={chain.explorer_url} target="_blank" rel="noopener noreferrer"
+                      className="num truncate text-brand hover:underline">{chain.tx_hash}</a>
+                  ) : (
+                    <span className="num truncate text-tinta">{chain.tx_hash}</span>
+                  )}
+                  <BotonCopiar valor={chain.tx_hash} />
+                </span>
+              </div>
+            )}
             <div className="flex justify-between gap-3">
               <span className="text-tenue">Score registrado</span>
               <span className="num text-tinta">{chain?.score ?? "—"}</span>
