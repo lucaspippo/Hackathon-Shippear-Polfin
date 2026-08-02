@@ -182,12 +182,11 @@ export function Cerebro({
       }
       if (++intentos > 40) clearInterval(timer);
     }, 120);
+    return () => clearInterval(timer);
   }, [datos, focal]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    enfocar();
-  }, [enfocar]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => enfocar(), [enfocar]);
 
   const redCompleta = () => grafoRef.current?.zoomToFit(700, 60);
 

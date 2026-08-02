@@ -35,16 +35,15 @@ export function useEsMobile(bp = 1023) {
 // Estado booleano persistido en localStorage (colapsos de sidebar/chat, etc).
 // Hidrata post-mount para no romper el SSR con un mismatch de contenido.
 export function usePersistente(clave: string, porDefecto: boolean) {
-  const [valor, setValor] = useState(() => {
-    if (typeof window === "undefined") return porDefecto;
+  const [valor, setValor] = useState(porDefecto);
+  useEffect(() => {
     const guardado = window.localStorage.getItem(clave);
-    return guardado !== null ? guardado === "1" : porDefecto;
-  });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (guardado !== null) setValor(guardado === "1");
+  }, [clave]);
   const set = (v: boolean) => {
     setValor(v);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(clave, v ? "1" : "0");
-    }
+    window.localStorage.setItem(clave, v ? "1" : "0");
   };
   return [valor, set] as const;
 }
