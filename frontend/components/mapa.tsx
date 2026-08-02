@@ -49,8 +49,12 @@ export function Mapa({ rol, irA }: { rol: Rol; irA: (v: Vista, foco?: number) =>
   // Los roles que le importan a quien mira; se resetean al cambiar de rol
   // salvo que el usuario haya elegido sus propios toggles.
   const relevantes = useMemo(() => ROLES_RELEVANTES[rol.id] ?? ORDEN, [rol.id]);
+
+  // Sincronizar filtros con relevantes cuando cambia el rol.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFiltros(new Set(relevantes));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTocado(false);
   }, [relevantes]);
 

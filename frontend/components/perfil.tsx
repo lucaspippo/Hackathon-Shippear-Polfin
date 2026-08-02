@@ -3,7 +3,7 @@
 // (fórmula auditable), desglose, condiciones, historial/relaciones, y el bloque
 // de VERIFICACIÓN ON-CHAIN con QR — la prueba de que el score vive en Avalanche,
 // no solo en la DB de PolFin. Responsive: anda en mobile (~375px).
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   pesos, fechaCorta, type Score, type EntidadDetalle, type OnchainScore, type Instrumento,
@@ -26,8 +26,6 @@ export function Perfil({
   const { data: docs } = useApi<Instrumento[]>(`/api/instrumentos?entidad=${entidadId}`, [entidadId]);
 
   const esYo = entidadId === rol.entidadId;
-  const [origin, setOrigin] = useState("");
-  useEffect(() => { setOrigin(window.location.origin); }, []);
 
   // Relaciones: contrapartes distintas como comprador (deudor) y vendedor (acreedor).
   const relaciones = useMemo(() => {
@@ -45,7 +43,7 @@ export function Perfil({
   // Valor del QR: en Fuji real → explorador Snowtrace; en mock → vista propia de
   // verificación (honesta: muestra hash, score, timestamp, entidad). Al pasar a
   // POLFIN_CHAIN_MODE=fuji, explorer_url viene poblado y el QR apunta a la cadena.
-  const qrValue = chain?.explorer_url ?? (origin ? `${origin}/verificar/${entidadId}` : "");
+  const qrValue = chain?.explorer_url ?? (typeof window !== "undefined" ? `${window.location.origin}/verificar/${entidadId}` : "");
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-8">
