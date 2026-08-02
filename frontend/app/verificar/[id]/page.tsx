@@ -48,7 +48,7 @@ export default function VerificarPage({ params }: { params: Promise<{ id: string
               </div>
 
               <div className="mt-5 space-y-2 text-[12px]">
-                <Fila k="Red" v={`Avalanche ${data.es_real ? "Fuji (testnet)" : "Fuji (testnet · mock)"}`} />
+                <Fila k="Red" v={data.red_label ?? "Avalanche (modo demo)"} />
                 {data.contrato_address && <Fila k="Contrato" v={data.contrato_address} mono />}
                 <Fila k="Tx hash" v={data.tx_hash ?? "—"} mono />
                 {data.timestamp && <Fila k="Registrado" v={data.timestamp} />}
@@ -69,7 +69,7 @@ export default function VerificarPage({ params }: { params: Promise<{ id: string
                 {!data.es_real && (
                   <span className="mt-2 block text-tenue/70">
                     Modo demostración: el registro es simulado pero íntegro. Con la cadena real
-                    (Fuji) activada, este código lleva a la transacción verificable en Snowtrace.
+                    (Fuji o mainnet) activada, este código lleva a la transacción verificable en Snowtrace.
                   </span>
                 )}
               </p>

@@ -126,14 +126,14 @@ function descargarPdf(i: Instrumento) {
 
   doc.setDrawColor(225, 225, 225);
   doc.setFillColor(250, 250, 250);
-  const alturaChain = i.red === "fuji" && i.token_id != null ? 30 : 24;
+  const alturaChain = i.token_id != null ? 30 : 24;
   doc.roundedRect(margen, y, anchoUtil, alturaChain, 2, 2, "FD");
   y += 6;
   linea("REGISTRO ON-CHAIN", { size: 8, bold: true, color: gris, gap: 5 });
-  linea(`Red: Avalanche ${i.red === "fuji-mock" ? "Fuji (testnet · mock)" : i.red}`, { size: 9, gap: 5 });
+  linea(`Red: ${i.red_label ?? "Avalanche (modo demo)"}`, { size: 9, gap: 5 });
   linea(`Contrato: ${i.contrato_address}`, { size: 9, gap: 5 });
   linea(`Tx hash: ${i.tx_hash}`, { size: 9, gap: 5 });
-  if (i.red === "fuji" && i.token_id != null) linea(`NFT: token #${i.token_id}`, { size: 9, gap: 5 });
+  if (i.token_id != null) linea(`NFT: token #${i.token_id}`, { size: 9, gap: 5 });
   y += 6;
 
   const aceptado = i.aceptado === 1;
@@ -190,11 +190,11 @@ function EPagare({ id, onAceptar }: { id: number; onAceptar?: (id: number) => vo
         <div className="mt-5 rounded-xl border border-linea bg-ink/50 p-4">
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-tenue">Registro on-chain</div>
           <div className="mt-1.5 grid grid-cols-1 gap-1 text-[11.5px]">
-            <div className="flex justify-between gap-3"><span className="text-tenue">Red</span><span className="num text-tinta">Avalanche {i.red === "fuji-mock" ? "Fuji (testnet · mock)" : i.red}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-tenue">Red</span><span className="num text-tinta">{i.red_label ?? "Avalanche (modo demo)"}</span></div>
             <div className="flex justify-between gap-3">
               <span className="shrink-0 text-tenue">Contrato</span>
-              {i.red === "fuji" ? (
-                <a href={`https://testnet.snowtrace.io/address/${i.contrato_address}`} target="_blank" rel="noopener noreferrer"
+              {i.explorer_url ? (
+                <a href={i.explorer_url} target="_blank" rel="noopener noreferrer"
                   className="num truncate text-brand hover:underline">{i.contrato_address}</a>
               ) : (
                 <span className="num truncate text-tinta">{i.contrato_address}</span>
@@ -202,17 +202,17 @@ function EPagare({ id, onAceptar }: { id: number; onAceptar?: (id: number) => vo
             </div>
             <div className="flex justify-between gap-3">
               <span className="shrink-0 text-tenue">Tx hash</span>
-              {i.red === "fuji" ? (
-                <a href={`https://testnet.snowtrace.io/tx/${i.tx_hash}`} target="_blank" rel="noopener noreferrer"
+              {i.tx_explorer_url ? (
+                <a href={i.tx_explorer_url} target="_blank" rel="noopener noreferrer"
                   className="num truncate text-brand hover:underline">{i.tx_hash}</a>
               ) : (
                 <span className="num truncate text-tinta">{i.tx_hash}</span>
               )}
             </div>
-            {i.red === "fuji" && i.token_id != null && (
+            {i.nft_explorer_url && i.token_id != null && (
               <div className="flex justify-between gap-3">
                 <span className="shrink-0 text-tenue">NFT</span>
-                <a href={`https://testnet.snowtrace.io/nft/${i.contrato_address}/${i.token_id}`} target="_blank" rel="noopener noreferrer"
+                <a href={i.nft_explorer_url} target="_blank" rel="noopener noreferrer"
                   className="num truncate text-brand hover:underline">token #{i.token_id}</a>
               </div>
             )}

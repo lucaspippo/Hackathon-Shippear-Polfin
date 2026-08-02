@@ -10,7 +10,7 @@ import { Carta, Etiqueta, Pill, Punto } from "@/components/ui";
 import { fechaRelativa } from "@/lib/actividad";
 import type { DocRef } from "@/components/documento";
 
-type Resuelta = { estado: string; instrumento?: { instrumento_id: number; contrato_address: string; fecha_vencimiento: string; tx_hash: string; red: string } };
+type Resuelta = { estado: string; instrumento?: { instrumento_id: number; contrato_address: string; fecha_vencimiento: string; tx_hash: string; red: string; red_label?: string; explorer_url?: string | null } };
 
 export function Aprobaciones({
   rol, solicitudes, recargar, irA, abrirDoc,
@@ -120,8 +120,8 @@ export function Aprobaciones({
                   {resuelta.estado === "aprobada" ? (
                     <>e-Pagaré emitido{resuelta.instrumento ? (
                       <> (vence {resuelta.instrumento.fecha_vencimiento}, contrato{" "}
-                        {resuelta.instrumento.red === "fuji" ? (
-                          <a href={`https://testnet.snowtrace.io/address/${resuelta.instrumento.contrato_address}`} target="_blank" rel="noopener noreferrer"
+                        {resuelta.instrumento.explorer_url ? (
+                          <a href={resuelta.instrumento.explorer_url} target="_blank" rel="noopener noreferrer"
                             className="num text-brand hover:underline">{resuelta.instrumento.contrato_address.slice(0, 14)}…</a>
                         ) : (
                           <span className="num">{resuelta.instrumento.contrato_address.slice(0, 14)}…</span>
