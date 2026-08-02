@@ -1,0 +1,41 @@
+# .github/workflows/contracts-deploy.yml
+name: Deploy de contratos
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Red destino del deploy'
+        required: true
+        type: choice
+        options:
+          - fuji
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # El Environment exige (si así se configuró en el repo, ver DEPLOY.md)
+    # aprobación manual de un reviewer antes de correr — un deploy gasta
+    # gas real y genera una address nueva cada vez.
+    environment: fuji-testnet
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: contracts/package-lock.json
+      - name: Instalar dependencias
+        working-directory: contracts
+        run: npm ci
+      - name: Deploy a ${{ inputs.network }}
+        working-directory: contracts
+        env:
+          POLFIN_OPERATOR_PRIVATE_KEY_FUJI: ${{ secrets.POLFIN_OPERATOR_PRIVATE_KEY_FUJI }}
+          POLFIN_FUJI_RPC_URL: ${{ secrets.POLFIN_FUJI_RPC_URL }}
+        run: npx hardhat run scripts/deploy.js --network ${{ inputs.network }}
+      - name: Subir direcciones deployadas como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts-deployment-${{ inputs.network }}
+          path: contracts/deployments/${{ inputs.network }}.json
