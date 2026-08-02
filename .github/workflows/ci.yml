@@ -88,3 +88,24 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000
         run: npm run build
+
+  contracts:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: contracts/package-lock.json
+      - name: Instalar dependencias
+        working-directory: contracts
+        run: npm ci
+      - name: Compilar contratos
+        working-directory: contracts
+        run: npx hardhat compile
+      - name: Correr tests
+        working-directory: contracts
+        run: npx hardhat test
