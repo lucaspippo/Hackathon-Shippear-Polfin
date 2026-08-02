@@ -2,13 +2,53 @@
 
 > Complementa a `docs/superpowers/plans/2026-08-01-avalanche-gasless.md`
 > (Tareas 1-13, todas completas y pusheadas). Este documento es solo la
-> Tarea 14 de ese plan, expandida paso a paso — nada de código nuevo, es la
-> puesta en marcha real con credenciales tuyas. Todo en **Fuji (testnet)** —
-> no hay AVAX real en juego en ningún paso. Mainnet (Tarea 15) queda fuera
-> de alcance por ahora.
+> Tarea 14 de ese plan, expandida paso a paso — nada de código nuevo (salvo
+> los fixes puntuales documentados abajo), es la puesta en marcha real con
+> credenciales tuyas. Todo en **Fuji (testnet)** — no hay AVAX real en juego
+> en ningún paso.
 
 **Nunca pegues una private key real en el chat, en un commit, ni en ningún
 archivo que no sea `.env` (gitignoreado).**
+
+---
+
+## ⚠️ Hallazgo importante: 0xgasless NO patrocina gas en Fuji hoy
+
+Ejecutado y confirmado en la práctica (dos veces, por dos vías independientes):
+
+- El contrato factory de Smart Account que usa el SDK de 0xgasless
+  (`DEFAULT_ZEROXGASLESS_FACTORY_ADDRESS = 0x6Ce624d571B376D8Ecfbf9d9d79A3639D62A86C8`,
+  **una sola dirección, sin mapa por chain**, según el propio código del
+  SDK) **no está deployado en Avalanche Fuji** (`eth_getCode` devuelve
+  vacío) — pero **sí está deployado en Avalanche mainnet** (`eth_getCode`
+  devuelve bytecode real). Se puede reproducir:
+  ```bash
+  curl -s -X POST "https://avalanche-fuji-c-chain.publicnode.com" \
+    -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"eth_getCode","params":["0x6Ce624d571B376D8Ecfbf9d9d79A3639D62A86C8","latest"]}'
+  # → "0x" (vacío, no existe)
+  ```
+- Independientemente, la lista de testnets que 0xgasless publica en su
+  propio repo (`github.com/0xgasless/mcp`) — Sonic Testnet, Nillion
+  Testnet, Babylon Testnet, MEGA Testnet, Kite Testnet, Ethereum Sepolia,
+  Stable Testnet, Pharos Testnet — **no incluye Avalanche Fuji**.
+- El bundler (`https://bundler.0xgasless.com/<chainId>`) y el paymaster
+  (URL del dashboard) SÍ responden para Fuji (`chainId=43113`) — pero eso
+  no alcanza: sin el contrato factory, el SDK no puede calcular la
+  dirección de la Smart Account, así que no hay a quién transferirle el
+  ownership ni a través de quién mandar una tx patrocinada.
+
+**Consecuencia práctica:** en Fuji se puede deployar y probar que los 3
+contratos funcionan de verdad (Pasos 1-6 de abajo), pero **el patrocinio de
+gas de 0xgasless (el objetivo central de este trabajo) solo se puede
+demostrar en Avalanche mainnet** — la única red donde confirmamos que el
+factory existe. Eso es la Tarea 15 del plan original (con AVAX real, gate
+de confirmación explícita).
+
+Si en algún momento 0xgasless deploya su factory en Fuji, `npm run
+contracts:deploy:fuji` va a volver a intentar la transferencia
+automáticamente sin que haga falta tocar nada — el código ya lo soporta
+(ver Paso 5).
 
 ---
 
@@ -72,21 +112,22 @@ AVAX · C-Chain · Chain 43113**. No pide login social ni coupon.
   AVAX nativo, no en LINK.
 
 Esto lo necesitás porque la wallet operadora es la que firma el **deploy**
-de los contratos (eso lo paga ella, normal, no patrocinado) — el gasless
-solo aplica a las 3 tools del agente después del deploy. Con 0.5 AVAX de
-testnet alcanza de sobra.
+de los contratos — en Fuji, hoy, paga su propio gas siempre (ver el
+hallazgo de arriba). Con 0.5 AVAX de testnet alcanza de sobra.
 
-## Paso 3 — Crear el paymaster en 0xgasless
+## Paso 3 — Crear el paymaster en 0xgasless (igual sirve tenerlo armado)
 
 Esto es en el navegador, seguí lo que te muestre la pantalla real (puede
-diferir un poco de esta descripción):
+diferir un poco de esta descripción). Aunque el patrocinio no vaya a
+funcionar en Fuji (ver el hallazgo de arriba), dejar esto armado ahorra
+tiempo cuando se pruebe en mainnet:
 
 1. Entrá a `https://dashboard.0xgasless.com` y creá cuenta / iniciá sesión.
 2. Creá un paymaster nuevo, chain **Avalanche Fuji**.
 3. Pegá la `address` de la wallet operadora (Paso 1) como wallet autorizada.
 4. El dashboard te da **API key**, **Paymaster URL** y **Creator address**
-   — OJO, **NO te da una "Bundler URL" explícita** (a diferencia de lo que
-   asumía una versión anterior de este doc). Verificado en la práctica:
+   — OJO, **NO te da una "Bundler URL" explícita**. Verificado en la
+   práctica:
 
    - **Paymaster URL**: la que te dio el dashboard tal cual, con forma
      `https://paymaster.0xgasless.com/v1/<chainId>/rpc/<tu-key>`.
@@ -101,8 +142,8 @@ diferir un poco de esta descripción):
        -H "Content-Type: application/json" \
        -d '{"jsonrpc":"2.0","id":1,"method":"eth_supportedEntryPoints","params":[]}'
      ```
-5. **Cargá el gas tank** del paymaster con fondos de testnet — sin esto el
-   patrocinio falla aunque todo lo demás esté bien.
+5. **Cargá el gas tank** del paymaster con fondos de testnet (para cuando
+   sirva) — sin esto el patrocinio falla aunque todo lo demás esté bien.
 
 ## Paso 4 — Completar los `.env`
 
@@ -110,11 +151,20 @@ En **`backend/.env`** Y en **`contracts/.env`** (los mismos valores en los dos):
 
 ```
 POLFIN_CHAIN_MODE=fuji
-POLFIN_FUJI_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
+POLFIN_FUJI_RPC_URL=https://avalanche-fuji-c-chain.publicnode.com
 POLFIN_OPERATOR_PRIVATE_KEY_FUJI=<la private key del Paso 1>
 POLFIN_0XGASLESS_BUNDLER_URL_FUJI=<la URL del Paso 3>
 POLFIN_0XGASLESS_PAYMASTER_URL_FUJI=<la URL del Paso 3>
 ```
+
+**Sobre el RPC:** el default de `.env.example`
+(`api.avax-test.network/ext/bc/C/rpc`, el oficial de Avalanche) y el de
+Ankr (`rpc.ankr.com/avalanche_fuji`) devolvieron `"state not available for
+pending block"` al estimar gas durante el deploy — un problema conocido de
+varios RPCs públicos de Fuji con `eth_estimateGas` contra el bloque
+`pending`. `publicnode.com` funcionó bien. El deploy (Paso 5) ya no depende
+de esto de todas formas (usa `gasLimit` fijo), pero para cualquier otra
+interacción con la chain conviene este RPC.
 
 ## Paso 5 — Deployar los 3 contratos a Fuji
 
@@ -122,80 +172,70 @@ POLFIN_0XGASLESS_PAYMASTER_URL_FUJI=<la URL del Paso 3>
 npm run contracts:deploy:fuji
 ```
 
-Fijate en la salida:
-- Tiene que decir **"Transfiriendo ownership a la Smart Account: 0x..."** —
-  si en cambio ves "OJO: no se transfirió el ownership...", falta algo del
-  Paso 4 (revisá `contracts/.env`, no solo `backend/.env`, porque Hardhat
-  lee de ahí).
-- Las direcciones quedan en `contracts/deployments/fuji.json` (no hace
-  falta copiarlas a mano a ningún lado).
+Fijate en la salida — en Fuji, **hoy es normal y esperado** ver:
+
+```
+OJO: falló la resolución/transferencia a la Smart Account (...). Los contratos
+quedan owned por la EOA operadora — seguí sin el gasless por ahora.
+```
+
+(Eso es exactamente el hallazgo de arriba, no un error de tu setup — el
+script sigue igual y termina bien.) Si en cambio ves **"Transfiriendo
+ownership a la Smart Account: 0x..."**, quiere decir que 0xgasless ya
+deployó su factory en Fuji — genial, avisá al equipo, y en ese caso las
+tools del agente sí van a poder patrocinar gas ahí.
+
+Las direcciones quedan en `contracts/deployments/fuji.json` (no hace falta
+copiarlas a mano a ningún lado).
 
 **Verificación:** abrí `https://testnet.snowtrace.io/address/<scoreRegistry>`
 con la dirección que imprimió — tiene que existir el contrato y mostrar la
 tx de deploy.
 
-## Paso 6 — Levantar el backend en modo Fuji
+## Paso 6 — Validar que los contratos funcionan de verdad (sin gasless)
+
+Con el deploy del Paso 5 hecho:
 
 ```bash
-npm run dev:api
+cd contracts
+npx hardhat run scripts/verificar-fuji-sin-gasless.js --network fuji
 ```
 
-En otra terminal, listá entidades reales de la DB sembrada:
+Manda dos transacciones reales firmadas directo por la wallet operadora
+(`registrarScore` + `generarInstrumento`), lee los datos de vuelta del
+contrato, y confirma que coinciden. Al final imprime los `tx_hash` con link
+a Snowtrace. Esto **sí** funciona en Fuji hoy — valida la lógica de negocio
+real (los contratos), aunque la wallet pague su propio gas (nada
+patrocinado todavía).
 
-```bash
-curl -s http://localhost:4000/api/entidades | node -e "
-let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
-JSON.parse(d).slice(0,10).forEach(e=>console.log(e.id, e.nombre, e.tipo));
-});"
-```
+## Pasos que requieren mainnet (no funcionan en Fuji hoy)
 
-## Paso 7 — Prueba manual: disparar un crédito real
+Los siguientes pasos del diseño original **no se pueden completar en
+Fuji** por el hallazgo de arriba — quedan documentados para cuando se
+haga la Tarea 15 (mainnet, con AVAX real y el gate de confirmación del
+plan):
 
-```bash
-curl -X POST http://localhost:4000/api/agente/evaluar-credito \
-  -H "Content-Type: application/json" \
-  -d '{"deudorId": <id de una persona>, "acreedorId": <id de un comercio>, "montoSolicitado": 20000}'
-```
-
-La respuesta trae un `tx_hash` real. Pegalo en
-`https://testnet.snowtrace.io/tx/<tx_hash>` y confirmá que la transacción
-está confirmada y emitió el evento correspondiente (`InstrumentoGenerado` o
-`ScoreRegistrado`).
-
-**La prueba clave del "gasless":** anotá el balance AVAX de la wallet
-operadora antes de este paso y después
-(`https://testnet.snowtrace.io/address/<tu wallet>`) — tiene que ser
-exactamente igual. Si bajó, el paymaster no está patrocinando de verdad.
-
-## Paso 8 — Prueba con código (automática, hace el Paso 7 por vos)
-
-Con `backend/.env` completo (Paso 4) y el deploy hecho (Paso 5):
-
-```bash
-node --env-file=backend/.env backend/scripts/verificar-gasless-fuji.js
-```
-
-Manda una tx patrocinada (`registrarScore`), imprime el `tx_hash` con link a
-Snowtrace, y compara el balance AVAX antes/después — si detecta que gastó
-gas propio, termina con error (exit code 1) en vez de solo avisar.
-
-## Paso 9 — Verificación visual en el frontend
-
-```bash
-npm run dev
-```
-
-Entrá a `http://localhost:3000`, andá al perfil de la entidad que usaste en
-el Paso 7, y confirmá que la tarjeta "Verificado on-chain" dice
-**"Avalanche Fuji (testnet)"** (no "modo demo"), con un botón
-"Ver en Snowtrace →" que lleva a un link real.
+- **Probar el flujo completo vía el backend real**
+  (`POST /api/agente/evaluar-credito`, `npm run dev:api`) — hoy
+  `backend/src/chain/onchain.js` (Tareas 6-7) solo sabe mandar
+  transacciones patrocinadas cuando `POLFIN_CHAIN_MODE=fuji|avalanche`, no
+  tiene un camino "chain real sin gasless". Como el gasless no funciona en
+  Fuji, este camino queda bloqueado en esta red específicamente — el Paso 6
+  de arriba prueba los mismos contratos pero por fuera del backend.
+- `backend/scripts/verificar-gasless-fuji.js` — el script automático de
+  verificación gasless que dejó el equipo. Va a fallar en Fuji con el mismo
+  error de la Smart Account por la misma razón; es exactamente el script
+  correcto para correr en mainnet una vez ahí.
+- La verificación visual en el frontend mostrando "Ver en Snowtrace" con
+  gas patrocinado — depende de que el paso anterior funcione.
 
 ---
 
 ## Al terminar
 
-Si los 10 pasos salen bien, la Tarea 14 del plan original queda cerrada de
-verdad (no solo el código — la puesta en marcha real). Marcá sus checkboxes
-en `docs/superpowers/plans/2026-08-01-avalanche-gasless.md` vos mismo una
-vez confirmado, ya que requiere que hayas ejecutado cada paso con tus
-propias credenciales.
+Lo que se puede cerrar en Fuji hoy: Pasos 1-6 (deploy real + contratos
+funcionando con transacciones reales, sin patrocinio). El patrocinio de
+gas en sí — el objetivo central de este trabajo — se demuestra recién en
+mainnet (Tarea 15). Marcá los checkboxes que correspondan en
+`docs/superpowers/plans/2026-08-01-avalanche-gasless.md` una vez
+confirmado.
