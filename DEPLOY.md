@@ -62,3 +62,62 @@ config pública. El `.env` con la key **no** está en el repo (gitignoreado).
   que responder con datos reales (usa `AI_GATEWAY_API_KEY` + `LLM_MODE=gateway`).
 - Camino feliz: generar una venta a plazo → e-pagaré → insights en el inicio →
   cerebro → mapa.
+
+## CI/CD automático
+
+Desde que se agregó `.github/workflows/ci.yml`, cada push/PR contra
+`master` corre CI (backend, frontend, contracts — solo los jobs de las
+carpetas que tocaste). Para que esto realmente bloquee deploys rotos hacen
+falta tres pasos manuales, una sola vez, hechos por quien tenga permisos de
+admin sobre el repo y la cuenta de Render:
+
+### 1. Conectar el Blueprint de Render
+
+1. Dashboard de Render → **New** → **Blueprint**.
+2. Elegí el repo `lucaspippo/Hackathon-Shippear-Polfin`, rama `master`.
+3. Render detecta `render.yaml` y propone crear `polfin-backend` y
+   `polfin-frontend`.
+4. Cargá los secretos marcados `sync: false` (ver tabla más arriba en este
+   mismo archivo: `AI_GATEWAY_API_KEY` en el backend; `NEXT_PUBLIC_API_URL`
+   en el frontend, una vez que sepas la URL pública del backend).
+5. Confirmá. De acá en más, `autoDeploy: true` dispara un deploy en cada
+   push a `master`.
+
+### 2. Branch protection en `master`
+
+Vía dashboard: Settings → Branches → Add branch protection rule →
+`master` → tildar "Require status checks to pass before merging" →
+seleccionar los tres jobs (`backend`, `frontend`, `contracts` —
+aparecen en la lista después de que corran al menos una vez en un PR).
+
+Vía `gh` CLI (alternativa, si lo tenés instalado y con permisos de admin):
+
+```bash
+gh api repos/lucaspippo/Hackathon-Shippear-Polfin/branches/master/protection \
+  -X PUT \
+  -H "Accept: application/vnd.github+json" \
+  -f required_status_checks.strict=true \
+  -f 'required_status_checks.contexts[]=backend' \
+  -f 'required_status_checks.contexts[]=frontend' \
+  -f 'required_status_checks.contexts[]=contracts' \
+  -f enforce_admins=false \
+  -f required_pull_request_reviews=null \
+  -f restrictions=null
+```
+
+### 3. GitHub Environment para el deploy de contratos
+
+1. Settings → Environments → **New environment** → nombre `fuji-testnet`.
+2. (Opcional pero recomendado) Agregar un "Required reviewer" — vos mismo o
+   quien vaya a autorizar cada deploy — así el workflow de
+   `contracts-deploy.yml` pide aprobación antes de correr.
+3. En "Environment secrets", agregar:
+   - `POLFIN_OPERATOR_PRIVATE_KEY_FUJI` — la private key de la wallet
+     operadora de testnet (la misma que usás localmente en
+     `contracts/.env`, nunca la de mainnet).
+   - `POLFIN_FUJI_RPC_URL` — podés usar el público
+     `https://api.avax-test.network/ext/bc/C/rpc` o uno propio.
+4. Para disparar un deploy: Actions → "Deploy de contratos" → "Run
+   workflow" → rama `master` → network `fuji`.
+
+`contracts/hardhat.config.js` ya tiene configurada la red `avalanche` (mainnet), pero `contracts-deploy.yml` intencionalmente solo soporta `fuji` por ahora — habilitar deploy a mainnet desde CI es una decisión aparte, deliberada, que todavía no se tomó. El día que se agregue, se repite este mismo paso 3 con un Environment `mainnet` y reviewers **obligatorios** (no opcionales) dado que ahí se mueve gas real.
