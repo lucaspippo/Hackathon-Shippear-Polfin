@@ -20,6 +20,7 @@ backend/data/*.db-shm
 # ...pero la plantilla sin secretos SÍ se versiona (documenta las vars):
 !.env.example
 !backend/.env.example
+!frontend/.env.example
 
 # misc
 *.log
